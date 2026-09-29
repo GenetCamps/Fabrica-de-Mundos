@@ -1,0 +1,4169 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#141E33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Craftlandia">
+<title>Craftlandia — Aprende construyendo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   CRAFTLANDIA · Sistema visual v2
+   Cada superficie del juego es un volumen, no un rectángulo. Los bloques se
+   dibujan con tres caras reales (arriba, frente, costado) y una sola fuente
+   de luz arriba-izquierda, constante en toda la interfaz.
+   ========================================================================== */
+:root{
+  --cielo-alto:#101B33;
+  --cielo-medio:#27406B;
+  --cielo-bajo:#5B7BA8;
+  --horizonte:#C08A6E;
+
+  --pasto:#5BA83C;
+  --tierra:#8B5A2B;
+  --piedra:#79839A;
+  --oro:#F0B02E;
+  --diamante:#3FCFCB;
+  --rubi:#D14B3C;
+  --amatista:#8B6BD9;
+
+  --tinta:#0D1424;
+  --hueso:#FBF7EC;
+  --niebla:rgba(251,247,236,.62);
+
+  --luz:rgba(255,255,255,.30);
+  --media:rgba(0,0,0,.14);
+  --oscura:rgba(0,0,0,.34);
+
+  --iso-x:-26deg;
+  --iso-y:-38deg;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'Fredoka',Verdana,'Trebuchet MS',sans-serif;
+  font-weight:500;
+  background:var(--cielo-alto);
+  color:var(--hueso);
+  display:flex;align-items:center;justify-content:center;
+  user-select:none;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============================ MUNDO DE FONDO ============================ */
+#mundo{position:fixed;inset:0;z-index:0;overflow:hidden;}
+
+#atmosfera{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,
+    var(--cielo-alto) 0%, #1B2B4C 26%, var(--cielo-medio) 52%,
+    #47638F 70%, var(--cielo-bajo) 84%, var(--horizonte) 100%);
+}
+#estrellas{position:absolute;inset:0 0 42% 0;}
+#estrellas i{
+  position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
+  animation:titila 4s ease-in-out infinite;
+}
+@keyframes titila{0%,100%{opacity:.15}50%{opacity:.9}}
+
+#astro{
+  position:absolute;top:9%;right:13%;width:74px;height:74px;
+  background:radial-gradient(circle at 36% 34%,#FFF6D8,#FFD98A 52%,#F0B02E 74%,transparent 76%);
+  filter:drop-shadow(0 0 34px rgba(240,176,46,.5));
+  animation:respira 7s ease-in-out infinite;
+}
+@keyframes respira{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.05);opacity:1}}
+
+.capa-cerro{position:absolute;left:0;bottom:0;width:200%;height:100%;}
+.capa-cerro svg{position:absolute;bottom:0;left:0;width:50%;height:100%;}
+.capa-cerro svg+svg{left:50%;}
+#cerros1{animation:deriva 190s linear infinite;opacity:.34;}
+#cerros2{animation:deriva 120s linear infinite;opacity:.55;}
+#cerros3{animation:deriva 74s linear infinite;opacity:.9;}
+@keyframes deriva{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+#nubes{position:absolute;inset:0 0 40% 0;}
+.nube{position:absolute;display:flex;filter:drop-shadow(0 6px 0 rgba(0,0,0,.10));}
+.nube b{display:block;background:rgba(255,255,255,.82);}
+
+#terreno{
+  position:absolute;left:0;right:0;bottom:0;height:110px;
+  background:
+    linear-gradient(180deg,
+      #74C24C 0 9px, var(--pasto) 9px 26px,
+      #A6703A 26px 44px, var(--tierra) 44px 74px,
+      #6D7488 74px 100%);
+  box-shadow:0 -3px 0 rgba(255,255,255,.16), inset 0 -40px 60px rgba(0,0,0,.30);
+}
+#terreno::before{
+  content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(90deg,rgba(0,0,0,.13) 2px,transparent 2px),
+    linear-gradient(180deg,rgba(0,0,0,.10) 2px,transparent 2px);
+  background-size:34px 26px;
+}
+#pastos{position:absolute;left:0;right:0;bottom:98px;height:14px;}
+#pastos i{position:absolute;bottom:0;width:4px;background:#7FD154;transform-origin:bottom;
+  animation:ondea 3.4s ease-in-out infinite;}
+@keyframes ondea{0%,100%{transform:skewX(0deg)}50%{transform:skewX(-11deg)}}
+
+#motas{position:absolute;inset:0;}
+#motas i{position:absolute;width:3px;height:3px;background:rgba(255,236,180,.85);
+  border-radius:50%;animation:flota linear infinite;}
+@keyframes flota{
+  0%{transform:translate(0,0);opacity:0}
+  12%{opacity:.85}
+  88%{opacity:.6}
+  100%{transform:translate(34px,-130px);opacity:0}
+}
+#vineta{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 42%,transparent 42%,rgba(6,10,20,.55) 100%);}
+
+/* ============================ BLOQUE ISOMÉTRICO ============================ */
+.iso{
+  position:relative;transform-style:preserve-3d;
+  transform:rotateX(var(--iso-x)) rotateY(var(--iso-y));
+  width:var(--s);height:var(--s);flex-shrink:0;
+}
+.iso u{position:absolute;inset:0;display:block;}
+.iso .cf{transform:translateZ(calc(var(--s)/2));}
+.iso .cl{transform:rotateY(90deg) translateZ(calc(var(--s)/2));filter:brightness(.66);}
+.iso .ct{transform:rotateX(90deg) translateZ(calc(var(--s)/2));filter:brightness(1.28);}
+.iso u::after{
+  content:"";position:absolute;inset:0;
+  background-image:
+    radial-gradient(circle at 22% 26%,rgba(0,0,0,.16) 14%,transparent 15%),
+    radial-gradient(circle at 72% 62%,rgba(0,0,0,.13) 12%,transparent 13%),
+    radial-gradient(circle at 46% 82%,rgba(255,255,255,.14) 11%,transparent 12%);
+  background-size:50% 50%;
+}
+
+/* ============================ SUPERFICIE / BOTONES ============================ */
+#app{
+  position:relative;z-index:3;width:100%;max-width:900px;height:100%;
+  padding:calc(16px + env(safe-area-inset-top)) 16px calc(10px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+}
+#app::-webkit-scrollbar{display:none;}
+
+.losa{
+  position:relative;border:0;border-radius:5px;
+  background:var(--piedra);color:var(--hueso);
+  font-family:inherit;font-weight:600;
+  box-shadow:
+    inset 0 5px 0 var(--luz),
+    inset 0 -6px 0 var(--oscura),
+    inset 6px 0 0 rgba(255,255,255,.09),
+    inset -6px 0 0 var(--media),
+    0 7px 0 rgba(8,12,22,.42),
+    0 12px 22px rgba(0,0,0,.30);
+  transition:transform .12s cubic-bezier(.34,1.56,.64,1), box-shadow .12s, filter .16s;
+  cursor:pointer;overflow:hidden;
+}
+.losa::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:
+    radial-gradient(circle at 16% 22%,rgba(0,0,0,.09) 10%,transparent 11%),
+    radial-gradient(circle at 78% 68%,rgba(0,0,0,.07) 9%,transparent 10%);
+  background-size:44px 44px;opacity:.8;
+}
+.losa::after{
+  content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.30),transparent);
+  transform:skewX(-18deg);opacity:0;pointer-events:none;
+}
+.losa:hover:not(:disabled){transform:translateY(-3px);filter:brightness(1.06);}
+.losa:hover:not(:disabled)::after{animation:destello .7s ease-out;}
+@keyframes destello{0%{left:-70%;opacity:.9}100%{left:120%;opacity:0}}
+.losa:active:not(:disabled){
+  transform:translateY(6px);
+  box-shadow:inset 0 5px 0 var(--luz),inset 0 -3px 0 var(--oscura),0 1px 0 rgba(8,12,22,.42);
+}
+.losa:focus-visible{outline:4px solid #FFD066;outline-offset:4px;}
+.losa:disabled{cursor:not-allowed;}
+
+.t-pasto{background:var(--pasto);}
+.t-oro{background:var(--oro);color:#3A2803;}
+.t-diamante{background:var(--diamante);color:#06322F;}
+.t-rubi{background:var(--rubi);}
+.t-amatista{background:var(--amatista);}
+.t-cielo{background:#3B6FD4;}
+.t-piedra{background:var(--piedra);}
+.t-tierra{background:var(--tierra);}
+.t-off{background:#3E465C;color:#8892A8;box-shadow:inset 0 4px 0 rgba(255,255,255,.07),inset 0 -5px 0 rgba(0,0,0,.3),0 5px 0 rgba(8,12,22,.35);}
+.t-off:hover{transform:none;filter:none;}
+
+/* ============================ ENCABEZADO ============================ */
+.barra{display:flex;align-items:center;gap:11px;margin-bottom:16px;flex-shrink:0;}
+.icono-btn{padding:12px 15px;font-size:17px;line-height:1;}
+.rotulo{flex:1;min-width:0;}
+.rotulo b{display:block;font-size:20px;font-weight:600;letter-spacing:.2px;
+  text-shadow:0 3px 0 rgba(6,10,20,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rotulo span{display:block;font-size:12px;font-weight:400;color:var(--niebla);margin-top:2px;}
+
+.medidor{
+  display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:5px;
+  background:rgba(8,13,26,.62);font-size:14px;font-weight:600;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.10),inset 0 -3px 0 rgba(0,0,0,.35);
+  backdrop-filter:blur(3px);
+}
+.medidor .sep{opacity:.3;}
+
+/* ============================ PANTALLAS ============================ */
+.pantalla{display:flex;flex-direction:column;flex:1;min-height:0;}
+.entra{animation:entraArriba .42s cubic-bezier(.22,1,.3,1) backwards;}
+@keyframes entraArriba{from{opacity:0;transform:translateY(22px) scale(.985)}to{opacity:1;transform:none}}
+.sale{animation:saleAbajo .2s ease-in forwards;}
+@keyframes saleAbajo{to{opacity:0;transform:translateY(-14px) scale(.99)}}
+
+/* ============================ PORTADA ============================ */
+.marca{text-align:center;margin:14px 0 26px;}
+.marca h1{
+  font-size:clamp(38px,10vw,68px);font-weight:700;letter-spacing:2px;line-height:.95;
+  color:#8FE05F;
+  text-shadow:0 3px 0 #4E9633,0 6px 0 #356824,0 11px 0 rgba(6,10,20,.5),0 18px 30px rgba(0,0,0,.5);
+  animation:brinca 4.5s ease-in-out infinite;
+}
+@keyframes brinca{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.marca p{margin-top:14px;font-size:13px;font-weight:400;color:var(--niebla);letter-spacing:.6px;}
+
+.jugadores{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+.ficha{
+  padding:22px 12px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;
+  font-size:21px;font-weight:600;
+}
+.ficha .plataforma{
+  display:flex;justify-content:center;align-items:flex-end;
+  height:132px;margin-bottom:-6px;position:relative;
+}
+.ficha .sombra{
+  position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  width:56px;height:12px;border-radius:50%;background:rgba(0,0,0,.34);filter:blur(3px);
+  animation:sombraLate 2.8s ease-in-out infinite;
+}
+@keyframes sombraLate{0%,100%{width:56px;opacity:.34}50%{width:46px;opacity:.24}}
+.ficha .edad{font-size:12px;font-weight:400;opacity:.9;}
+.ficha .sello{
+  font-size:11px;font-weight:500;padding:6px 11px;border-radius:4px;
+  background:rgba(0,0,0,.26);box-shadow:inset 0 2px 0 rgba(0,0,0,.2);
+}
+
+/* Personaje pixelado */
+.avatar{display:grid;image-rendering:pixelated;filter:drop-shadow(0 5px 0 rgba(0,0,0,.22));}
+.avatar i{display:block;}
+.anim-idle{animation:idle 2.8s ease-in-out infinite;}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.avatar i.ojo{animation:parpadeo 5.2s infinite;}
+@keyframes parpadeo{0%,95.5%,100%{opacity:1}96%,98%{opacity:0}}
+
+/* ============================ MAPA DE BIOMAS ============================ */
+.biomas{display:flex;flex-direction:column;gap:12px;}
+.bioma{display:flex;align-items:center;gap:15px;padding:16px 17px;text-align:left;}
+.bioma .emblema{
+  width:56px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:29px;border-radius:5px;background:rgba(0,0,0,.24);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.28);
+}
+.bioma .cuerpo{flex:1;min-width:0;}
+.bioma .cuerpo b{display:block;font-size:17px;font-weight:600;}
+.bioma .cuerpo em{display:block;font-style:normal;font-size:12px;font-weight:400;opacity:.88;margin-top:3px;}
+.riel{height:13px;border-radius:3px;background:rgba(0,0,0,.42);margin-top:9px;overflow:hidden;
+  box-shadow:inset 0 3px 0 rgba(0,0,0,.35);}
+.riel i{display:block;height:100%;border-radius:3px;
+  background:linear-gradient(180deg,#FFD066 0 4px,var(--oro) 4px 100%);
+  transition:width .8s cubic-bezier(.22,1,.3,1);}
+
+/* ============================ CAMINO DE NIVELES ============================ */
+.camino{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:13px;padding-bottom:8px;}
+.nodo{padding:15px 8px 13px;display:flex;flex-direction:column;align-items:center;gap:9px;
+  font-size:12px;font-weight:500;line-height:1.35;text-align:center;}
+.nodo .cima{height:46px;display:flex;align-items:center;justify-content:center;}
+.nodo .cifra{
+  width:44px;height:44px;border-radius:5px;font-size:21px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.26);box-shadow:inset 0 3px 0 rgba(255,255,255,.14),inset 0 -3px 0 rgba(0,0,0,.3);
+}
+.astros{display:flex;gap:3px;height:17px;}
+.astros svg{width:15px;height:15px;}
+.astros .lleno{fill:#FFD066;filter:drop-shadow(0 1px 0 #A9750E);}
+.astros .vacio{fill:rgba(0,0,0,.32);}
+
+/* ============================ JUEGO ============================ */
+.escena{flex:1;display:flex;flex-direction:column;gap:15px;justify-content:center;min-height:0;}
+.tablilla{
+  padding:20px 18px;text-align:center;border-radius:6px;
+  background:linear-gradient(180deg,rgba(10,16,30,.72),rgba(10,16,30,.55));
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.11),inset 0 -4px 0 rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.32);
+  backdrop-filter:blur(4px);
+}
+.tablilla .enunciado{font-size:clamp(19px,4.8vw,27px);font-weight:600;line-height:1.35;
+  text-shadow:0 2px 0 rgba(0,0,0,.4);}
+.montaje{display:flex;flex-wrap:wrap;gap:13px;justify-content:center;align-items:center;margin-top:18px;}
+.montaje .iso{animation:surge .42s cubic-bezier(.3,1.6,.5,1) backwards;}
+@keyframes surge{from{transform:rotateX(var(--iso-x)) rotateY(var(--iso-y)) scale(0) translateY(-40px);opacity:0}
+                 to{transform:rotateX(var(--iso-x)) rotateY(var(--iso-y)) scale(1);opacity:1}}
+.conjunto{display:flex;gap:20px;align-items:center;justify-content:center;flex-wrap:wrap;}
+.operador{font-size:30px;font-weight:700;opacity:.85;text-shadow:0 3px 0 rgba(0,0,0,.4);}
+.fantasma{opacity:.24;filter:grayscale(1);}
+
+.opciones{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;}
+.opciones.de3{grid-template-columns:repeat(3,1fr);}
+.opcion{
+  min-height:96px;padding:14px 8px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:7px;
+  font-size:clamp(26px,7.5vw,40px);font-weight:700;
+  text-shadow:0 3px 0 rgba(0,0,0,.24);
+  animation:entraOpcion .34s cubic-bezier(.22,1,.3,1) backwards;
+}
+@keyframes entraOpcion{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+.opcion .conteo{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:160px;}
+.opcion .conteo i{width:12px;height:12px;border-radius:2px;background:rgba(0,0,0,.36);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.18);}
+.opcion .muestra{width:52px;height:52px;}
+
+/* --- Fichas de madera para letras y sílabas --- */
+.ficha-letra{
+  min-width:46px;height:58px;padding:0 11px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(22px,5.6vw,30px);font-weight:700;color:#4A3208;
+  background:linear-gradient(180deg,#F0D8A4 0 6px,#DDBE7E 6px 100%);
+  box-shadow:inset 0 5px 0 rgba(255,255,255,.5),inset 0 -6px 0 rgba(0,0,0,.2),
+             inset 5px 0 0 rgba(255,255,255,.16),inset -5px 0 0 rgba(0,0,0,.12),
+             0 6px 0 rgba(8,12,22,.42);
+  animation:surgeFicha .38s cubic-bezier(.3,1.6,.5,1) backwards;
+}
+@keyframes surgeFicha{from{transform:translateY(-22px) scale(.7);opacity:0}to{transform:none;opacity:1}}
+.ficha-letra.hueco{
+  background:rgba(8,13,26,.55);color:#FFD066;
+  box-shadow:inset 0 4px 0 rgba(0,0,0,.45),inset 0 -3px 0 rgba(255,255,255,.09),0 5px 0 rgba(8,12,22,.4);
+  animation:surgeFicha .38s cubic-bezier(.3,1.6,.5,1) backwards, palpita 1.5s ease-in-out infinite .4s;
+}
+@keyframes palpita{0%,100%{filter:brightness(1)}50%{filter:brightness(1.5)}}
+.ficha-letra.silaba{font-size:clamp(18px,4.6vw,25px);letter-spacing:.5px;}
+.tira{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;}
+
+.emojo{font-size:clamp(54px,15vw,78px);line-height:1;filter:drop-shadow(0 7px 0 rgba(0,0,0,.28));
+  animation:idle 3.2s ease-in-out infinite;}
+.opcion .emojo{font-size:clamp(38px,10vw,50px);animation:none;}
+.opcion.texto-chico{font-size:clamp(17px,4.6vw,25px);letter-spacing:.5px;}
+.pedestal{display:flex;flex-direction:column;align-items:center;gap:12px;}
+
+/* --- Banderas dibujadas con CSS (los emojis de bandera no existen en Windows) --- */
+.bandera{
+  position:relative;aspect-ratio:3/2;border-radius:4px;overflow:hidden;flex-shrink:0;
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.22), 0 6px 0 rgba(8,12,22,.42), 0 10px 18px rgba(0,0,0,.3);
+  animation:surgeFicha .4s cubic-bezier(.3,1.6,.5,1) backwards;
+}
+.bandera .disco{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  border-radius:50%;aspect-ratio:1;}
+.bandera .rombo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:76%;height:70%;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
+.bandera .canton{position:absolute;left:0;top:0;width:40%;height:53.8%;}
+.bandera .hoja{position:absolute;inset:0;display:grid;place-items:center;
+  font-size:calc(var(--fw) * .40);line-height:1;}
+.opcion div{text-align:center;line-height:1.22;}
+
+/* --- Laboratorio: lienzo de simulación y palanca --- */
+.lienzo{
+  position:relative;width:100%;border-radius:6px;overflow:hidden;
+  box-shadow:inset 0 0 0 3px rgba(0,0,0,.3), 0 8px 0 rgba(8,12,22,.42), 0 14px 26px rgba(0,0,0,.35);
+  background:#0E1626;
+}
+.lienzo canvas{display:block;width:100%;height:auto;}
+.medida{
+  position:absolute;top:9px;left:9px;padding:6px 11px;border-radius:4px;
+  background:rgba(8,13,26,.72);font-size:13px;font-weight:600;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.1);
+}
+.estado{
+  position:absolute;bottom:9px;left:9px;right:9px;padding:8px 11px;border-radius:4px;
+  background:rgba(8,13,26,.78);font-size:13px;font-weight:500;text-align:center;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.1);
+}
+.estado.alerta{background:rgba(150,30,20,.85);}
+
+.control{
+  padding:14px 16px 10px;border-radius:6px;
+  background:rgba(10,16,30,.6);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.09),inset 0 -4px 0 rgba(0,0,0,.35);
+}
+.control label{display:block;font-size:13px;font-weight:600;margin-bottom:10px;}
+.palanca{-webkit-appearance:none;appearance:none;width:100%;height:36px;background:transparent;cursor:pointer;}
+.palanca::-webkit-slider-runnable-track{height:20px;border-radius:4px;
+  background:linear-gradient(90deg,#3B6FD4,#F0B02E,#D14B3C);
+  box-shadow:inset 0 3px 0 rgba(0,0,0,.4),inset 0 -3px 0 rgba(255,255,255,.12);}
+.palanca::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;margin-top:-8px;
+  border-radius:5px;background:var(--hueso);
+  box-shadow:inset 0 5px 0 rgba(255,255,255,.7),inset 0 -5px 0 rgba(0,0,0,.22),0 5px 0 rgba(8,12,22,.5);}
+.palanca::-moz-range-track{height:20px;border-radius:4px;
+  background:linear-gradient(90deg,#3B6FD4,#F0B02E,#D14B3C);}
+.palanca::-moz-range-thumb{width:34px;height:34px;border:0;border-radius:5px;background:var(--hueso);
+  box-shadow:0 5px 0 rgba(8,12,22,.5);}
+.leyenda{display:flex;justify-content:space-between;font-size:11px;opacity:.75;margin-top:2px;}
+.explica{
+  padding:15px 16px;border-radius:6px;font-size:14px;font-weight:400;line-height:1.6;
+  background:rgba(10,16,30,.55);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.08),inset 0 -4px 0 rgba(0,0,0,.3);
+}
+.explica b{font-weight:600;color:#FFD066;}
+
+.aviso{
+  font-size:10px;font-weight:600;padding:3px 8px;border-radius:3px;
+  background:rgba(0,0,0,.28);color:rgba(251,247,236,.8);
+}
+.aviso.urge{background:#B8641E;color:#FFF3D8;}
+
+.campo{
+  width:100%;padding:13px 14px;border:0;border-radius:5px;
+  font-family:inherit;font-size:16px;font-weight:600;color:var(--tinta);
+  background:var(--hueso);
+  box-shadow:inset 0 4px 0 rgba(0,0,0,.16),0 4px 0 rgba(8,12,22,.4);
+}
+.campo:focus{outline:3px solid #FFD066;outline-offset:2px;}
+.fila-pron{display:flex;gap:9px;align-items:center;margin-bottom:10px;}
+.fila-pron .quien{font-size:13px;font-weight:600;min-width:62px;}
+.fila-pron .campo{flex:1;}
+
+.grieta{position:absolute;inset:0;pointer-events:none;opacity:0;}
+.grieta.viva{opacity:1;animation:agrieta .3s steps(3) forwards;}
+@keyframes agrieta{from{opacity:0;transform:scale(1.3)}to{opacity:1;transform:scale(1)}}
+.opcion.ok{animation:acierta .5s cubic-bezier(.3,1.7,.5,1);}
+@keyframes acierta{0%{transform:scale(1)}35%{transform:scale(1.11);filter:brightness(1.8)}100%{transform:scale(1)}}
+.opcion.mal{animation:falla .4s cubic-bezier(.36,.07,.19,.97);}
+@keyframes falla{0%,100%{transform:translateX(0)}18%{transform:translateX(-11px)}
+  42%{transform:translateX(9px)}66%{transform:translateX(-6px)}86%{transform:translateX(4px)}}
+
+.jalones{display:flex;gap:5px;}
+.jalones i{width:15px;height:9px;border-radius:2px;background:#3D4557;
+  box-shadow:inset 0 2px 0 rgba(0,0,0,.3);transition:background .3s,box-shadow .3s;}
+.jalones i.bien{background:#7FD154;box-shadow:inset 0 2px 0 rgba(255,255,255,.35);}
+.jalones i.raspon{background:var(--oro);box-shadow:inset 0 2px 0 rgba(255,255,255,.3);}
+
+.esquirla{position:fixed;pointer-events:none;z-index:70;border-radius:2px;}
+#fogonazo{position:fixed;inset:0;z-index:65;pointer-events:none;background:#FFF6D8;opacity:0;}
+#fogonazo.arde{animation:fogona .4s ease-out;}
+@keyframes fogona{0%{opacity:.34}100%{opacity:0}}
+
+/* ============================ RESULTADO ============================ */
+.desenlace{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;text-align:center;}
+.desenlace h2{font-size:clamp(27px,7vw,40px);font-weight:700;letter-spacing:.5px;
+  text-shadow:0 4px 0 rgba(6,10,20,.5);}
+.trofeos{display:flex;gap:14px;}
+.trofeos svg{width:clamp(48px,13vw,72px);height:clamp(48px,13vw,72px);
+  animation:aterriza .6s cubic-bezier(.3,1.6,.5,1) backwards;}
+@keyframes aterriza{from{transform:scale(2.6) translateY(-70px) rotate(-40deg);opacity:0}
+                    to{transform:none;opacity:1}}
+.trofeos .lleno{fill:#FFD066;filter:drop-shadow(0 4px 0 #A9750E);}
+.trofeos .vacio{fill:rgba(255,255,255,.13);}
+.sumario{font-size:14px;font-weight:400;line-height:1.85;color:var(--niebla);white-space:pre-line;}
+.xp-riel{width:min(300px,80vw);height:15px;border-radius:4px;background:rgba(0,0,0,.45);overflow:hidden;
+  box-shadow:inset 0 3px 0 rgba(0,0,0,.4);}
+.xp-riel i{display:block;height:100%;width:0;border-radius:4px;
+  background:linear-gradient(180deg,#8FE05F 0 5px,#4E9633 5px 100%);
+  transition:width 1.1s cubic-bezier(.22,1,.3,1);}
+
+/* ============================ COFRE ============================ */
+.cofre{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;}
+.premio{padding:16px 8px;text-align:center;font-size:11px;font-weight:500;
+  display:flex;flex-direction:column;gap:9px;align-items:center;cursor:default;}
+.premio .simbolo{font-size:32px;filter:drop-shadow(0 4px 0 rgba(0,0,0,.3));}
+.premio b{font-size:12px;font-weight:600;}
+.premio.abierto .simbolo{animation:idle 3.4s ease-in-out infinite;}
+
+.pie{margin-top:16px;text-align:center;font-size:11px;font-weight:400;color:var(--niebla);
+  flex-shrink:0;display:flex;gap:9px;justify-content:center;align-items:center;flex-wrap:wrap;}
+
+@media (max-width:430px){
+  .jugadores{grid-template-columns:1fr 1fr;gap:10px;}
+  .ficha{font-size:17px;padding:16px 6px 14px;}
+  .ficha .plataforma{height:104px;}
+  .rotulo b{font-size:17px;}
+  .bioma{padding:13px;gap:11px;}
+  .bioma .emblema{width:46px;height:46px;font-size:24px;}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;}
+}
+</style>
+</head>
+<body>
+<div id="mundo">
+  <div id="atmosfera"></div>
+  <div id="estrellas"></div>
+  <div id="astro"></div>
+  <div class="capa-cerro" id="cerros1"></div>
+  <div class="capa-cerro" id="cerros2"></div>
+  <div class="capa-cerro" id="cerros3"></div>
+  <div id="nubes"></div>
+  <div id="motas"></div>
+  <div id="terreno"></div>
+  <div id="pastos"></div>
+  <div id="vineta"></div>
+</div>
+<div id="fogonazo"></div>
+<div id="app"></div>
+
+<script>
+/* ==========================================================================
+   CRAFTLANDIA v2.0
+   core/     Almacen · Perfiles · Sesion · Dificultad · Router
+   shared/   Audio · Voz · Iso · PixelArt · Efectos · Escenografia
+   biomes/   matematicas (bancos de niveles + generadores)
+   world/    mapa de biomas · camino de niveles · cofre
+   ========================================================================== */
+
+const REDUCIR = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================ shared/Color ============================ */
+function tintar(hex, factor){
+  const n = parseInt(hex.slice(1),16);
+  const ajusta = v => Math.max(0, Math.min(255, Math.round(v*factor)));
+  const r = ajusta((n>>16)&255), g = ajusta((n>>8)&255), b = ajusta(n&255);
+  return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+}
+
+/* ============================ shared/Iso ============================ */
+/* Un bloque con tres caras reales. Misma luz en todo el juego. */
+function bloqueIso(tam, color, retraso){
+  const d = document.createElement('div');
+  d.className = 'iso';
+  d.style.setProperty('--s', tam+'px');
+  if (retraso != null) d.style.animationDelay = retraso+'ms';
+  ['cf','cl','ct'].forEach(c=>{
+    const u = document.createElement('u');
+    u.className = c;
+    u.style.background = color;
+    d.appendChild(u);
+  });
+  return d;
+}
+
+/* ============================ shared/Escenografia ============================ */
+const Escenografia = (() => {
+  const rnd = (a,b) => a + Math.random()*(b-a);
+
+  function estrellas(){
+    const c = document.getElementById('estrellas');
+    let h = '';
+    for (let i=0;i<70;i++){
+      h += `<i style="left:${rnd(0,100).toFixed(2)}%;top:${rnd(0,88).toFixed(2)}%;
+             animation-delay:${rnd(0,4).toFixed(2)}s;opacity:${rnd(.2,.9).toFixed(2)}"></i>`;
+    }
+    c.innerHTML = h;
+  }
+
+  /* Silueta de cerros hecha con bloques: caminata aleatoria, no una curva suave */
+  function siluetaSVG(pasos, alturaBase, variacion, color, semilla){
+    const W = 1200, H = 400, paso = W/pasos;
+    let y = alturaBase, d = `M0,${H} L0,${H-y}`;
+    let s = semilla;
+    const azar = () => { s = (s*9301 + 49297) % 233280; return s/233280; };
+    for (let i=0;i<pasos;i++){
+      const salto = Math.round((azar()-0.5)*variacion/16)*16;
+      y = Math.max(28, Math.min(H-40, y + salto));
+      d += ` L${(i*paso).toFixed(1)},${H-y} L${((i+1)*paso).toFixed(1)},${H-y}`;
+    }
+    d += ` L${W},${H} Z`;
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <path d="${d}" fill="${color}"/></svg>`;
+  }
+
+  function cerros(){
+    const capas = [
+      {id:'cerros1', pasos:26, base:200, vari:150, color:'#2E4468', semilla:7},
+      {id:'cerros2', pasos:34, base:150, vari:120, color:'#24354F', semilla:41},
+      {id:'cerros3', pasos:42, base:104, vari:96,  color:'#182538', semilla:93}
+    ];
+    capas.forEach(c=>{
+      const svg = siluetaSVG(c.pasos, c.base, c.vari, c.color, c.semilla);
+      document.getElementById(c.id).innerHTML = svg + svg;
+    });
+  }
+
+  /* Nubes de bloques, no de círculos */
+  function nubes(){
+    const cont = document.getElementById('nubes');
+    const formas = [
+      [[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[3,1],[4,1]],
+      [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[2,2],[3,2]],
+      [[0,0],[1,0],[2,0],[3,0],[4,0],[1,1],[2,1],[3,1]]
+    ];
+    let h = '';
+    for (let i=0;i<5;i++){
+      const f = formas[i % formas.length];
+      const u = Math.round(rnd(9,17));
+      const top = rnd(6,40).toFixed(1);
+      const dur = rnd(120,240).toFixed(0);
+      const op = rnd(.30,.62).toFixed(2);
+      let piezas = '';
+      f.forEach(([x,y])=>{
+        piezas += `<b style="position:absolute;left:${x*u}px;top:${y*u}px;width:${u}px;height:${u}px"></b>`;
+      });
+      h += `<div class="nube" style="top:${top}%;left:${rnd(-10,100).toFixed(1)}%;
+              width:${u*6}px;height:${u*3}px;opacity:${op};position:absolute;
+              animation:deriva ${dur}s linear infinite">${piezas}</div>`;
+    }
+    cont.innerHTML = h;
+  }
+
+  function pastos(){
+    const c = document.getElementById('pastos');
+    let h = '';
+    for (let i=0;i<52;i++){
+      h += `<i style="left:${rnd(0,100).toFixed(2)}%;height:${rnd(6,14).toFixed(0)}px;
+             animation-delay:${rnd(0,3.4).toFixed(2)}s"></i>`;
+    }
+    c.innerHTML = h;
+  }
+
+  function motas(){
+    if (REDUCIR) return;
+    const c = document.getElementById('motas');
+    let h = '';
+    for (let i=0;i<22;i++){
+      h += `<i style="left:${rnd(0,100).toFixed(2)}%;top:${rnd(40,96).toFixed(2)}%;
+             animation-duration:${rnd(9,20).toFixed(1)}s;animation-delay:${rnd(0,14).toFixed(1)}s"></i>`;
+    }
+    c.innerHTML = h;
+  }
+
+  return { montar(){ estrellas(); cerros(); nubes(); pastos(); motas(); } };
+})();
+
+/* ============================ core/Almacen ============================ */
+const Almacen = (() => {
+  const CLAVE = 'craftlandia_v2';
+  let cache = null;
+  async function leer(){
+    if (cache) return cache;
+    try{
+      if (window.storage){
+        const r = await window.storage.get(CLAVE);
+        if (r && r.value){ cache = JSON.parse(r.value); return cache; }
+      }
+    }catch(e){}
+    try{
+      const r = localStorage.getItem(CLAVE);
+      if (r){ cache = JSON.parse(r); return cache; }
+    }catch(e){}
+    cache = { perfiles:{} };
+    return cache;
+  }
+  async function guardar(datos){
+    cache = datos;
+    const txt = JSON.stringify(datos);
+    try{ if (window.storage){ await window.storage.set(CLAVE, txt); return true; } }catch(e){}
+    try{ localStorage.setItem(CLAVE, txt); return true; }catch(e){}
+    return false;
+  }
+  return { leer, guardar };
+})();
+
+/* ============================ core/Perfiles ============================ */
+const NINOS = {
+  /* `voz` es cómo se ESCRIBE para que el sintetizador lo pronuncie bien.
+     En pantalla siempre se ve `nombre`. Se puede corregir en ajustes. */
+  elijah:{ nombre:'Elijah', voz:'Elaya', edad:6, perfilEdad:'grande',
+    pelo:'#4A2E15', ropa:'#3F8F4F', pantalon:'#2E4C86', piel:'#E8B98C', acento:'t-pasto' },
+  edain:{  nombre:'Edain',  voz:'Edáin', edad:4, perfilEdad:'chico',
+    pelo:'#7B4A1E', ropa:'#E07A2C', pantalon:'#5B4A8A', piel:'#F0C79C', acento:'t-oro' }
+};
+
+/* Cómo se lee el nombre en voz alta (no cómo se escribe en pantalla). */
+function nombreHablado(id){
+  const a = Perfiles.ajustes();
+  return (a.pron && a.pron[id]) || NINOS[id].voz || NINOS[id].nombre;
+}
+
+const Perfiles = (() => {
+  let datos = { perfiles:{} }, activo = null;
+  const nuevo = id => ({
+    id, xp:0, estrellasTotales:0, racha:0, ultimoDia:null, biomas:{}, premios:[],
+    equipado:{ cabeza:null, mano:null, espalda:null, companero:null }
+  });
+  /* Cada bioma que se agregue al juego aparece en los perfiles existentes
+     sin borrar lo que ya tenían guardado. */
+  function alinear(p){
+    if (!p.biomas) p.biomas = {};
+    BIOMAS.forEach(b=>{
+      if (!p.biomas[b.id]) p.biomas[b.id] = { nivelMax:1, estrellas:{}, stats:{} };
+      if (!p.biomas[b.id].estrellas) p.biomas[b.id].estrellas = {};
+      if (!p.biomas[b.id].nivelMax) p.biomas[b.id].nivelMax = 1;
+      /* stats: cómo le ha ido, no solo su mejor resultado */
+      if (!p.biomas[b.id].stats) p.biomas[b.id].stats = {};
+    });
+    /* El reto del día tiene su propio registro, aparte de los biomas. */
+    if (!p.biomas.repaso) p.biomas.repaso = { nivelMax:1, estrellas:{}, stats:{} };
+    if (!p.equipado) p.equipado = { cabeza:null, mano:null, espalda:null, companero:null };
+    /* Si un premio deja de estar desbloqueado, se quita solo. */
+    Object.keys(p.equipado).forEach(r=>{
+      const pr = PREMIOS.find(x => x.id === p.equipado[r]);
+      if (pr && p.estrellasTotales < pr.costo) p.equipado[r] = null;
+    });
+    [].forEach(()=>{
+    });
+    return p;
+  }
+  async function iniciar(){
+    datos = await Almacen.leer();
+    if (!datos.perfiles) datos.perfiles = {};
+    for (const id in NINOS){
+      if (!datos.perfiles[id]) datos.perfiles[id] = nuevo(id);
+      alinear(datos.perfiles[id]);
+    }
+  }
+  function entrar(id){
+    activo = datos.perfiles[id];
+    const hoy = new Date().toISOString().slice(0,10);
+    if (activo.ultimoDia !== hoy){
+      const ayer = new Date(Date.now()-864e5).toISOString().slice(0,10);
+      activo.racha = (activo.ultimoDia === ayer) ? activo.racha+1 : 1;
+      activo.ultimoDia = hoy;
+      persistir();
+    }
+    return activo;
+  }
+  const actual = () => activo;
+  const todos  = () => datos.perfiles;
+  const persistir = () => Almacen.guardar(datos);
+  function ajustes(){ if (!datos.ajustes) datos.ajustes = {}; return datos.ajustes; }
+  return { iniciar, entrar, actual, todos, persistir, ajustes };
+})();
+
+/* ============================ shared/Audio ============================ */
+const Audio_ = (() => {
+  let ctx = null;
+  function ac(){
+    if (!ctx){ try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tono(freq, inicio, dur, tipo='square', vol=.12, barrido){
+    const c = ac(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = tipo; o.frequency.setValueAtTime(freq, c.currentTime+inicio);
+    if (barrido) o.frequency.exponentialRampToValueAtTime(barrido, c.currentTime+inicio+dur);
+    g.gain.setValueAtTime(0, c.currentTime+inicio);
+    g.gain.linearRampToValueAtTime(vol, c.currentTime+inicio+.012);
+    g.gain.exponentialRampToValueAtTime(.0001, c.currentTime+inicio+dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(c.currentTime+inicio); o.stop(c.currentTime+inicio+dur+.03);
+  }
+  function ruido(inicio, dur, vol=.09){
+    const c = ac(); if (!c) return;
+    const n = Math.floor(c.sampleRate*dur);
+    const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    const s = c.createBufferSource(); s.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+    const g = c.createGain(); g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(c.destination);
+    s.start(c.currentTime+inicio);
+  }
+  return {
+    romper(){ ruido(0,.16,.11); tono(150,0,.10,'square',.09,90); },
+    acierto(){ [523,659,784,1046,1318].forEach((f,i)=>tono(f,i*.062,.19,'square',.10)); tono(1568,.31,.3,'triangle',.06); },
+    fallo(){ tono(210,0,.14,'sawtooth',.06,150); tono(140,.09,.24,'square',.05); ruido(0,.1,.05); },
+    nivel(){ [392,523,659,784,1046,1318,1568].forEach((f,i)=>tono(f,i*.085,.3,'square',.10));
+             [196,262,330].forEach((f,i)=>tono(f,i*.085,.5,'triangle',.06)); },
+    estrella(i){ tono(784+i*196, 0, .3,'triangle',.10); },
+    toque(){ tono(720,0,.05,'square',.05); },
+    despertar(){ ac(); }
+  };
+})();
+
+/* ============================ shared/Voz ============================ */
+const IDIOMAS = {
+  es:{ etiqueta:'Español', respaldo:'es-MX', prueba:'Hola, vamos a jugar.' },
+  en:{ etiqueta:'Inglés',  respaldo:'en-US', prueba:'dog, apple, blue, thank you' },
+  fr:{ etiqueta:'Francés', respaldo:'fr-FR', prueba:'chien, pomme, bleu, merci' }
+};
+const CLAVES_IDIOMA = ['es','en','fr'];
+
+/* El navegador suele traer varias voces por idioma y por defecto toma la
+   primera de la lista, que casi siempre es la sintética vieja. Aquí se
+   puntúan y se elige la mejor, y el papá puede cambiarlas a mano. */
+const Voz = (() => {
+  const listas   = {es:[], en:[], fr:[]};
+  const elegidas = {es:null, en:null, fr:null};
+  let activa = true, velocidad = 0.95;
+  let ajustes = null, persistir = null, ultima = null;
+
+  function puntuar(v, idioma){
+    const n = (v.name || '').toLowerCase();
+    const l = (v.lang || '').toLowerCase();
+    let s = 0;
+    /* Las "natural/neural" son las voces modernas: suenan como persona. */
+    if (/natural|neural|premium|enhanced|siri/.test(n)) s += 100;
+    if (/google/.test(n)) s += 55;
+    /* Las viejas de sistema son las que suenan a robot. */
+    if (/eloquence|compact|espeak|pico|festival/.test(n)) s -= 70;
+    if (idioma === 'en'){
+      if (/samantha|ava|allison|zira|aria|jenny|karen|moira/.test(n)) s += 45;
+      if (l.includes('us')) s += 35;
+      else if (l.includes('gb') || l.includes('uk')) s += 20;
+      else s += 6;
+    } else if (idioma === 'fr'){
+      if (/am[eé]lie|audrey|denise|thomas|chantal|julie|marie|c[eé]line/.test(n)) s += 45;
+      if (l.includes('fr-fr') || l.includes('fr_fr')) s += 35;
+      else if (l.includes('ca')) s += 18;
+      else s += 6;
+    } else {
+      if (/paulina|m[oó]nica|sabina|dalia|helena|laura|lupe|ang[eé]lica|marisol|ximena|isabela|elvira/.test(n)) s += 45;
+      if (l.includes('mx')) s += 35;
+      else if (l.includes('us')) s += 22;
+      else if (l.includes('es-es') || l.includes('es_es')) s += 14;
+      else s += 6;
+    }
+    return s;
+  }
+
+  /* Compatibilidad con partidas guardadas antes de los tres idiomas. */
+  function guardadaDe(k){
+    if (!ajustes) return null;
+    return ajustes['voz_'+k] ||
+           (k === 'es' ? ajustes.vozURI : k === 'en' ? ajustes.vozEnURI : null);
+  }
+
+  function cargar(){
+    if (!('speechSynthesis' in window)) return;
+    let vs = [];
+    try{ vs = speechSynthesis.getVoices() || []; }catch(e){ return; }
+    CLAVES_IDIOMA.forEach(k=>{
+      const rx = new RegExp('^'+k, 'i');
+      listas[k] = vs.filter(v => rx.test(v.lang || '')).sort((a,b)=>puntuar(b,k)-puntuar(a,k));
+      const g = guardadaDe(k);
+      elegidas[k] = listas[k].find(v => v.voiceURI === g) || listas[k][0] || null;
+    });
+  }
+
+  let desbloqueada = false;
+  if ('speechSynthesis' in window){
+    cargar();
+    speechSynthesis.onvoiceschanged = cargar;
+    /* Android puebla la lista tarde y de forma irregular: hay que insistir. */
+    [200, 600, 1200, 2500, 4500, 8000].forEach(ms => setTimeout(cargar, ms));
+  }
+
+  /* Encola varias frases sin cortarlas entre sí: así una sola instrucción
+     puede empezar en español y terminar con la palabra extranjera bien dicha. */
+  function hablar(partes){
+    try{
+      /* Chrome se queda "pausado" solo; hay que reanimarlo antes de hablar. */
+      try{ speechSynthesis.resume(); }catch(e){}
+      /* Cancelar cuando no hay nada sonando rompe el audio en Android. */
+      const venia = speechSynthesis.speaking || speechSynthesis.pending;
+      if (venia) speechSynthesis.cancel();
+      const lanzar = () => partes.forEach(p=>{
+        if (!p.t) return;
+        const k = CLAVES_IDIOMA.includes(p.l) ? p.l : 'es';
+        const u = new SpeechSynthesisUtterance(p.t);
+        const v = elegidas[k];
+        if (v){ u.voice = v; u.lang = v.lang; }
+        else u.lang = IDIOMAS[k].respaldo;
+        /* El idioma extranjero un poco más lento: es el que están aprendiendo. */
+        u.rate = velocidad * (k === 'es' ? 1 : 0.88);
+        u.pitch = 1.0;   /* pitch alto es justo lo que suena a robot */
+        u.volume = 1;
+        speechSynthesis.speak(u);
+      });
+      /* Tras un cancel, Android ignora el speak inmediato: hay que respirar. */
+      if (venia) setTimeout(lanzar, 80); else lanzar();
+    }catch(e){}
+  }
+
+  return {
+    conectar(a, p){
+      ajustes = a; persistir = p;
+      if (typeof ajustes.velocidad === 'number') velocidad = ajustes.velocidad;
+      if (typeof ajustes.vozActiva === 'boolean') activa = ajustes.vozActiva;
+      cargar();
+    },
+    /* Acepta un texto en español o una lista de partes con idioma. */
+    decir(texto, forzar){
+      if ((!activa && !forzar) || !('speechSynthesis' in window) || !texto) return;
+      const partes = Array.isArray(texto) ? texto : [{t:texto, l:'es'}];
+      ultima = partes;
+      hablar(partes);
+    },
+    repetir(){ if (ultima) this.decir(ultima, true); },
+    callar(){ try{ speechSynthesis.cancel(); }catch(e){} },
+    alternar(){
+      activa = !activa;
+      if (!activa) this.callar();
+      if (ajustes){ ajustes.vozActiva = activa; persistir && persistir(); }
+      return activa;
+    },
+    estaActiva(){ return activa; },
+    /* Android e iOS no dejan hablar hasta que el usuario toca la pantalla.
+       Se manda una frase muda en el primer toque para abrir el permiso. */
+    desbloquear(){
+      if (desbloqueada || !('speechSynthesis' in window)) return;
+      try{
+        const u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0; u.rate = 2;
+        speechSynthesis.speak(u);
+        desbloqueada = true;
+      }catch(e){}
+      cargar();
+    },
+    estaDesbloqueada(){ return desbloqueada; },
+    cuantas(){ return CLAVES_IDIOMA.reduce((n,k)=>n+listas[k].length, 0); },
+    lista(k){ k = k || 'es'; if (!listas[k].length) cargar(); return listas[k]; },
+    actual(k){ return elegidas[k || 'es']; },
+    usar(k, v){
+      elegidas[k] = v;
+      if (ajustes){ ajustes['voz_'+k] = v.voiceURI; persistir && persistir(); }
+    },
+    ritmo(x){
+      velocidad = x;
+      if (ajustes){ ajustes.velocidad = x; persistir && persistir(); }
+    },
+    ritmoActual(){ return velocidad; },
+    hayVoces(){ return this.lista('es').length > 0; }
+  };
+})();
+
+/* ============================ shared/PixelArt ============================ */
+const SPRITE = [
+  '...xxxxxx...',
+  '..xHHHHHHx..',
+  '.xHHHHHHHHx.',
+  '.xhhhhhhhhx.',
+  '.xssssssssx.',
+  '.xseesseesx.',
+  '.xssssssssx.',
+  '.xsSmmmmSsx.',
+  '.xssssssssx.',
+  '..xxssssxx..',
+  '..xrrrrrrx..',
+  '.xRrrrrrrRx.',
+  'xsRrrrrrrRsx',
+  'xsRrrrrrrRsx',
+  '.xrrrrrrrrx.',
+  '.xppxxxxppx.',
+  '.xppx..xppx.',
+  '.xbbx..xbbx.'
+];
+
+/* --- Piezas que se le pueden poner encima al personaje --- */
+const LIENZO_AN = 18, LIENZO_AL = 20, BASE_X = 3, BASE_Y = 1;
+
+const PIEZAS = {
+  casco_oro:{ ranura:'cabeza', ox:4, oy:0,
+    paleta:{K:'#FFD066', k:'#C08A12'},
+    mapa:['..KKKKKK..',
+          '.KKKKKKKK.',
+          'KKkkkkkkKK',
+          'K.kk..kk.K']},
+
+  corona:{ ranura:'cabeza', ox:4, oy:0,
+    paleta:{W:'#FFE9A3', w:'#C79A1E'},
+    mapa:['W.W.WW.W.W',
+          '.WWWWWWWW.',
+          '..wwwwww..']},
+
+  capa:{ ranura:'espalda', ox:0, oy:9,
+    paleta:{C:'#C0453B', c:'#8A2F27'},
+    mapa:['....CCCCCCCCCC....',
+          '...CCCCCCCCCCCC...',
+          '..CCCCCCCCCCCCCC..',
+          '.CCCCCCCCCCCCCCCC.',
+          'CCCCCCCCCCCCCCCCCC',
+          'CCCCCCCCCCCCCCCCCC',
+          'CCCCCCCCCCCCCCCCCC',
+          '.CCCCCCCCCCCCCCCC.',
+          '.cccccccccccccccc.',
+          '..cccccccccccccc..',
+          '...cccccccccccc...']},
+
+  pico_piedra:{ ranura:'mano', ox:15, oy:8,
+    paleta:{P:'#98A2B8', M:'#7A5B38'},
+    mapa:['PPP','PPP','.M.','.M.','.M.','.M.','.M.','.M.']},
+
+  pico_diamante:{ ranura:'mano', ox:15, oy:8,
+    paleta:{P:'#4FD6D2', M:'#7A5B38'},
+    mapa:['PPP','PPP','.M.','.M.','.M.','.M.','.M.','.M.']},
+
+  espada:{ ranura:'mano', ox:15, oy:7,
+    paleta:{F:'#DCE6F2', M:'#7A5B38'},
+    mapa:['.F.','.F.','.F.','.F.','.F.','.F.','MMM','.M.','.M.']},
+
+  dragon:{ ranura:'companero', ox:0, oy:13,
+    paleta:{G:'#5BA83C', g:'#3E7A28', O:'#20242E'},
+    mapa:['..G.','.GGG','GGOG','.GGG','.g.g','.g.g']}
+};
+
+function lienzoVacio(){
+  return Array.from({length:LIENZO_AL}, () => new Array(LIENZO_AN).fill('.'));
+}
+function pegar(m, mapa, ox, oy, soloVacio){
+  mapa.forEach((fila,y)=>{
+    for (let x=0;x<fila.length;x++){
+      const c = fila[x];
+      if (c === '.') continue;
+      const fy = y+oy, fx = x+ox;
+      if (fy < 0 || fy >= LIENZO_AL || fx < 0 || fx >= LIENZO_AN) continue;
+      if (soloVacio && m[fy][fx] !== '.') continue;
+      m[fy][fx] = c;
+    }
+  });
+}
+
+function dibujarAvatar(cfg, px, animar, equipado){
+  const eq = equipado || {};
+  const m = lienzoVacio();
+  const paleta = {
+    x:'#1A1220',
+    H: tintar(cfg.pelo, 1.35), h: cfg.pelo,
+    s: cfg.piel, S: tintar(cfg.piel, .84),
+    e:'#22283A', m: tintar(cfg.piel, .68),
+    r: cfg.ropa, R: tintar(cfg.ropa, 1.22),
+    p: cfg.pantalon, b:'#3E2C1C', '.':null
+  };
+  const usar = id => {
+    const pz = PIEZAS[id];
+    if (!pz) return null;
+    Object.assign(paleta, pz.paleta);
+    return pz;
+  };
+  /* La capa va detrás: solo pinta donde el cuerpo no tapa. */
+  const capa = eq.espalda && usar(eq.espalda);
+  if (capa) pegar(m, capa.mapa, capa.ox, capa.oy, true);
+
+  pegar(m, SPRITE, BASE_X, BASE_Y);
+
+  ['cabeza','mano','companero'].forEach(r=>{
+    const pz = eq[r] && usar(eq[r]);
+    if (pz) pegar(m, pz.mapa, pz.ox, pz.oy);
+  });
+
+  const cont = document.createElement('div');
+  cont.className = 'avatar' + (animar && !REDUCIR ? ' anim-idle' : '');
+  cont.style.gridTemplateColumns = `repeat(${LIENZO_AN},${px}px)`;
+  cont.style.width = (LIENZO_AN*px)+'px';
+  m.forEach(fila=>{
+    fila.forEach(c=>{
+      const i = document.createElement('i');
+      i.style.width = px+'px'; i.style.height = px+'px';
+      const col = paleta[c];
+      if (col){
+        i.style.background = col;
+        i.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,.10)';
+        if (c === 'e') i.className = 'ojo';
+      }
+      cont.appendChild(i);
+    });
+  });
+  return cont;
+}
+
+/* ============================ shared/Efectos ============================ */
+function estrellaSVG(llena){
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="${llena?'lleno':'vacio'}"
+    d="M12 2.6l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.6l6.6-.9z"/></svg>`;
+}
+
+function desmoronar(elemento, color){
+  if (REDUCIR) return;
+  const r = elemento.getBoundingClientRect();
+  const tonos = [tintar(color,1.3), color, tintar(color,.68)];
+  for (let i=0;i<20;i++){
+    const p = document.createElement('div');
+    const t = 5 + Math.random()*10;
+    p.className = 'esquirla';
+    p.style.width = t+'px'; p.style.height = t+'px';
+    p.style.background = tonos[i%3];
+    p.style.boxShadow = 'inset 0 2px 0 rgba(255,255,255,.28)';
+    p.style.left = (r.left + r.width*(.2+Math.random()*.6)) + 'px';
+    p.style.top  = (r.top + r.height*(.2+Math.random()*.6)) + 'px';
+    document.body.appendChild(p);
+    const ang = -Math.PI/2 + (Math.random()-.5)*2.4;
+    const fue = 70 + Math.random()*150;
+    p.animate([
+      { transform:'translate(0,0) rotate(0deg)', opacity:1 },
+      { transform:`translate(${Math.cos(ang)*fue}px, ${Math.sin(ang)*fue + 190}px) rotate(${(Math.random()-.5)*720}deg)`, opacity:0 }
+    ], { duration: 700+Math.random()*400, easing:'cubic-bezier(.25,.6,.4,1)' })
+     .onfinish = () => p.remove();
+  }
+}
+
+function chispas(elemento){
+  if (REDUCIR) return;
+  const r = elemento.getBoundingClientRect();
+  for (let i=0;i<14;i++){
+    const p = document.createElement('div');
+    p.className = 'esquirla';
+    p.style.width = '5px'; p.style.height = '5px';
+    p.style.borderRadius = '50%';
+    p.style.background = i%2 ? '#FFF6D8' : '#FFD066';
+    p.style.boxShadow = '0 0 8px #FFD066';
+    p.style.left = (r.left + r.width/2)+'px';
+    p.style.top  = (r.top + r.height/2)+'px';
+    document.body.appendChild(p);
+    const ang = Math.random()*Math.PI*2, fue = 50+Math.random()*90;
+    p.animate([
+      { transform:'translate(0,0) scale(1)', opacity:1 },
+      { transform:`translate(${Math.cos(ang)*fue}px,${Math.sin(ang)*fue}px) scale(0)`, opacity:0 }
+    ], { duration:520+Math.random()*260, easing:'ease-out' }).onfinish = () => p.remove();
+  }
+}
+
+function fogonazo(){
+  if (REDUCIR) return;
+  const f = document.getElementById('fogonazo');
+  f.classList.remove('arde'); void f.offsetWidth; f.classList.add('arde');
+}
+
+/* ============================ core/Dificultad ============================ */
+const Dificultad = (() => {
+  let seguidos = 0, fallos = 0, recientes = [];
+  return {
+    reiniciar(){ seguidos = 0; fallos = 0; recientes = []; },
+    acierto(){ seguidos++; fallos = 0; },
+    fallo(){ fallos++; seguidos = 0; },
+    /* Se llama al pasar de reto: guarda si ese reto costó trabajo. */
+    cerrarPregunta(fallada){
+      recientes.push(fallada ? 1 : 0);
+      if (recientes.length > 3) recientes.shift();
+    },
+    sugiereAvanzar(){ return seguidos >= 3; },
+    /* El andamio no puede depender de fallos seguidos: para avanzar hay que
+       acertar, y ese acierto borraría el contador. Mira el reto anterior. */
+    necesitaRepaso(){
+      return recientes.length > 0 && recientes[recientes.length-1] === 1;
+    }
+  };
+})();
+
+/* ============================ core/Desempeno ============================ */
+/* Guardar solo la mejor cantidad de estrellas no dice nada de dónde batallan.
+   Aquí se acumula cómo le ha ido de verdad en cada nivel. */
+const Desempeno = {
+  registrar(prog, nivelId, aciertos, errores, temas){
+    const st = prog.stats[nivelId] || (prog.stats[nivelId] = {
+      intentos:0, aciertos:0, errores:0, ultimas:[], temas:[]
+    });
+    st.intentos++;
+    st.aciertos += aciertos;
+    st.errores  += errores;
+    const total = aciertos + errores;
+    st.ultimas.push(total ? Math.round(aciertos/total*100) : 100);
+    if (st.ultimas.length > 8) st.ultimas.shift();
+    /* Los enunciados fallados quedan guardados para el repaso futuro. */
+    (temas || []).forEach(t=>{ if (!st.temas.includes(t)) st.temas.push(t); });
+    if (st.temas.length > 12) st.temas.splice(0, st.temas.length-12);
+    st.fecha = new Date().toISOString().slice(0,10);
+    return st;
+  },
+  /* Precisión de los últimos intentos, que es lo que importa hoy. */
+  precision(prog, nivelId){
+    const st = prog.stats && prog.stats[nivelId];
+    if (!st || !st.ultimas.length) return null;
+    const recientes = st.ultimas.slice(-3);
+    return Math.round(recientes.reduce((a,b)=>a+b,0) / recientes.length);
+  },
+  necesitaPractica(prog, nivelId){
+    const pr = this.precision(prog, nivelId);
+    return pr !== null && pr < 70;
+  }
+};
+
+/* Resumen de un bioma completo, para el panel y para el repaso. */
+function resumenBioma(perfil, bio, edad){
+  const prog = perfil.biomas[bio.id];
+  const niveles = bio.niveles(edad);
+  let ac = 0, er = 0, jugados = 0, peor = null;
+  niveles.forEach(nv=>{
+    const st = prog.stats[nv.id];
+    if (!st) return;
+    jugados++; ac += st.aciertos; er += st.errores;
+    const pr = Desempeno.precision(prog, nv.id);
+    if (pr !== null && (!peor || pr < peor.pr)) peor = { nv, pr };
+  });
+  const estrellas = Object.keys(prog.estrellas)
+    .reduce((a,k)=>a + (prog.estrellas[k]||0), 0);
+  return {
+    jugados, total:niveles.length, peor, estrellas,
+    respondidas: ac + er,
+    precision: (ac+er) ? Math.round(ac/(ac+er)*100) : null
+  };
+}
+
+/* Niveles donde ya hay historial, pesados por lo mucho que cuestan. */
+function fuentesDebiles(perfil, edad){
+  const fuentes = [];
+  BIOMAS.forEach(bio=>{
+    const prog = perfil.biomas[bio.id];
+    if (!prog) return;
+    bio.niveles(edad).forEach(nv=>{
+      const pr = Desempeno.precision(prog, nv.id);
+      if (pr === null) return;
+      /* 100% pesa 1; 40% pesa 7. Lo que más cuesta sale más seguido. */
+      fuentes.push({ bio, nv, pr, peso: Math.max(1, Math.round((105-pr)/10)) });
+    });
+  });
+  return fuentes;
+}
+function elegirPonderado(lista){
+  const total = lista.reduce((a,f)=>a+f.peso, 0);
+  let n = Math.random()*total;
+  for (const f of lista){ n -= f.peso; if (n <= 0) return f; }
+  return lista[lista.length-1];
+}
+
+/* ============================ biomes/matematicas ============================ */
+const az = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+const mezclar = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]);
+
+const CUBOS = ['#5BA83C','#F0B02E','#3FCFCB','#D14B3C','#8B5A2B','#8B6BD9'];
+const COSAS = [
+  {n:'diamantes',e:'💎'},{n:'manzanas',e:'🍎'},{n:'antorchas',e:'🔥'},
+  {n:'zanahorias',e:'🥕'},{n:'ovejas',e:'🐑'},{n:'panes',e:'🍞'}
+];
+
+function opcionesNumero(correcto, cantidad, max, conPuntos){
+  const set = new Set([correcto]);
+  let intentos = 0;
+  while (set.size < cantidad && intentos < 60){
+    intentos++;
+    const d = correcto + az(-3,3);
+    if (d < 0 || d > max || d === correcto) continue;
+    set.add(d);
+  }
+  let n = 0;
+  while (set.size < cantidad){ if (n !== correcto && n <= max) set.add(n); n++; }
+  return mezclar([...set]).map(v => ({ etiqueta:String(v), puntos: conPuntos ? v : 0, valor:v }));
+}
+
+function armar(texto, hablado, visual, opciones, correcto){
+  return { texto, hablado: hablado || texto, visual, opciones,
+           respuesta: opciones.findIndex(o => o.valor === correcto) };
+}
+
+const NIVELES_CHICO = [
+  { id:1, nombre:'Cuenta los bloques', icono:'🟩', preguntas:5, gen(){
+      const n = az(1,5);
+      return armar('¿Cuántos bloques hay?','¿Cuántos bloques hay? Cuéntalos conmigo.',
+        {tipo:'cubos',cantidad:n}, opcionesNumero(n,3,6,true), n); }},
+  { id:2, nombre:'Cuenta hasta 10', icono:'🔢', preguntas:5, gen(){
+      const n = az(4,10);
+      return armar('¿Cuántos bloques hay?','¿Cuántos bloques hay?',
+        {tipo:'cubos',cantidad:n}, opcionesNumero(n,3,12,true), n); }},
+  { id:3, nombre:'¿Dónde hay más?', icono:'⚖️', preguntas:5, gen(){
+      let a = az(1,7), b = az(1,7);
+      while (a === b) b = az(1,7);
+      const mayor = Math.max(a,b);
+      const ops = mezclar([
+        {etiqueta:'',puntos:a,valor:a,color:'#5BA83C'},
+        {etiqueta:'',puntos:b,valor:b,color:'#F0B02E'}
+      ]);
+      return { texto:'¿Dónde hay MÁS bloques?', hablado:'¿Dónde hay más bloques?',
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===mayor) }; }},
+  { id:4, nombre:'Colores y formas', icono:'🎨', preguntas:5, gen(){
+      const cols = [{n:'verde',c:'#5BA83C'},{n:'rojo',c:'#D14B3C'},
+                    {n:'azul',c:'#4A7BD1'},{n:'amarillo',c:'#F0B02E'},
+                    {n:'naranja',c:'#E8862C'},{n:'morado',c:'#8B6BD9'},
+                    {n:'rosa',c:'#E87BA8'},{n:'café',c:'#8B5A2B'}];
+      const el = cols[az(0,cols.length-1)];
+      const ops = mezclar(cols).map(c=>({etiqueta:'',puntos:0,valor:c.n,color:c.c,muestra:c.c}));
+      return { texto:`Toca el bloque ${el.n}`, hablado:`Toca el bloque ${el.n}`,
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===el.n) }; }},
+  { id:5, nombre:'Junta y suma', icono:'➕', preguntas:5, gen(){
+      const a = az(1,3), b = az(1,2), r = a+b;
+      return armar(`${a} + ${b} = ?`, `${a} más ${b}. ¿Cuántos son en total?`,
+        {tipo:'suma',a,b}, opcionesNumero(r,3,7,true), r); }}
+];
+
+const NIVELES_GRANDE = [
+  { id:1, nombre:'Cuenta bloques', icono:'🟩', preguntas:6, gen(){
+      const n = az(5,10);
+      return armar('¿Cuántos bloques hay?','¿Cuántos bloques hay?',
+        {tipo:'cubos',cantidad:n}, opcionesNumero(n,4,14,false), n); }},
+  { id:2, nombre:'Suma con dibujos', icono:'➕', preguntas:6, gen(){
+      const a = az(1,5), b = az(1,5), r = a+b;
+      return armar(`${a} + ${b} = ?`, `${a} más ${b}`,
+        {tipo:'suma',a,b}, opcionesNumero(r,4,12,false), r); }},
+  { id:3, nombre:'Suma mental', icono:'🧠', preguntas:6, gen(){
+      const a = az(1,6), b = az(1,10-Math.min(a,9)), r = a+b;
+      return armar(`${a} + ${b} = ?`, `${a} más ${b}`, null, opcionesNumero(r,4,12,false), r); }},
+  { id:4, nombre:'Resta con dibujos', icono:'➖', preguntas:6, gen(){
+      const a = az(3,10), b = az(1,a-1), r = a-b;
+      return armar(`${a} − ${b} = ?`, `${a} menos ${b}`,
+        {tipo:'resta',a,b}, opcionesNumero(r,4,10,false), r); }},
+  { id:5, nombre:'Resta mental', icono:'🪓', preguntas:6, gen(){
+      const a = az(4,10), b = az(1,a-1), r = a-b;
+      return armar(`${a} − ${b} = ?`, `${a} menos ${b}`, null, opcionesNumero(r,4,10,false), r); }},
+  { id:6, nombre:'Hasta el 20', icono:'⛏️', preguntas:6, gen(){
+      if (Math.random() < .5){
+        const a = az(6,14), b = az(2,20-a), r = a+b;
+        return armar(`${a} + ${b} = ?`, `${a} más ${b}`, null, opcionesNumero(r,4,22,false), r);
+      }
+      const a = az(11,20), b = az(2,9), r = a-b;
+      return armar(`${a} − ${b} = ?`, `${a} menos ${b}`, null, opcionesNumero(r,4,20,false), r); }},
+  { id:7, nombre:'Sigue el patrón', icono:'🔗', preguntas:6, gen(){
+      const paso = [2,5,10,3][az(0,3)];
+      const ini = paso*az(1,3);
+      const s = [ini, ini+paso, ini+paso*2], r = ini+paso*3;
+      return armar(`${s[0]}, ${s[1]}, ${s[2]}, ?`,
+        `La serie va ${s[0]}, ${s[1]}, ${s[2]}. ¿Qué número sigue?`,
+        null, opcionesNumero(r,4,r+paso*2,false), r); }},
+  { id:8, nombre:'Problemas del mundo', icono:'📜', preguntas:6, gen(){
+      const cosa = COSAS[az(0,COSAS.length-1)];
+      if (Math.random() < .5){
+        const a = az(3,10), b = az(2,8), r = a+b;
+        const t = `Tienes ${a} ${cosa.n} ${cosa.e} y encuentras ${b} más. ¿Cuántas tienes?`;
+        return armar(t, t, null, opcionesNumero(r,4,20,false), r);
+      }
+      const a = az(6,18), b = az(2,5), r = a-b;
+      const t = `Tienes ${a} ${cosa.n} ${cosa.e} y regalas ${b}. ¿Cuántas te quedan?`;
+      return armar(t, t, null, opcionesNumero(r,4,20,false), r); }}
+];
+
+const BIOMA_MATE = {
+  id:'matematicas', nombre:'Isla Numérica', icono:'⛏️',
+  descripcion:'Rompe el bloque con la respuesta correcta', color:'t-pasto', tono:'#5BA83C',
+  niveles: p => p === 'chico' ? NIVELES_CHICO : NIVELES_GRANDE
+};
+
+/* ============================ biomes/letras ============================ */
+const sinAcento = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const MAYUS = s => s.toUpperCase();
+const VOCALES = ['A','E','I','O','U'];
+const LETRAS_FACILES = ['A','E','I','O','U','M','P','S','L','T','N','D','B','C','F','R'];
+
+/* Banco de palabras: sílabas separadas a mano, no por algoritmo. */
+const PALABRAS = [
+  {p:'sol',      e:'☀️', s:['sol']},
+  {p:'pan',      e:'🍞', s:['pan']},
+  {p:'pez',      e:'🐟', s:['pez']},
+  {p:'flor',     e:'🌸', s:['flor']},
+  {p:'tren',     e:'🚂', s:['tren']},
+  {p:'luna',     e:'🌙', s:['lu','na']},
+  {p:'casa',     e:'🏠', s:['ca','sa']},
+  {p:'gato',     e:'🐱', s:['ga','to']},
+  {p:'pato',     e:'🦆', s:['pa','to']},
+  {p:'perro',    e:'🐶', s:['pe','rro']},
+  {p:'oso',      e:'🐻', s:['o','so']},
+  {p:'ojo',      e:'👁️', s:['o','jo']},
+  {p:'mano',     e:'✋', s:['ma','no']},
+  {p:'boca',     e:'👄', s:['bo','ca']},
+  {p:'uva',      e:'🍇', s:['u','va']},
+  {p:'pera',     e:'🍐', s:['pe','ra']},
+  {p:'piña',     e:'🍍', s:['pi','ña']},
+  {p:'queso',    e:'🧀', s:['que','so']},
+  {p:'leche',    e:'🥛', s:['le','che']},
+  {p:'huevo',    e:'🥚', s:['hue','vo']},
+  {p:'libro',    e:'📚', s:['li','bro']},
+  {p:'silla',    e:'🪑', s:['si','lla']},
+  {p:'mesa',     e:'🍽️', s:['me','sa']},
+  {p:'puerta',   e:'🚪', s:['puer','ta']},
+  {p:'coche',    e:'🚗', s:['co','che']},
+  {p:'barco',    e:'⛵', s:['bar','co']},
+  {p:'nube',     e:'☁️', s:['nu','be']},
+  {p:'fuego',    e:'🔥', s:['fue','go']},
+  {p:'agua',     e:'💧', s:['a','gua']},
+  {p:'abeja',    e:'🐝', s:['a','be','ja']},
+  {p:'vaca',     e:'🐄', s:['va','ca']},
+  {p:'globo',    e:'🎈', s:['glo','bo']},
+  {p:'llave',    e:'🔑', s:['lla','ve']},
+  {p:'playa',    e:'🏖️', s:['pla','ya']},
+  {p:'isla',     e:'🏝️', s:['is','la']},
+  {p:'iman',     e:'🧲', s:['i','man']},
+  {p:'manzana',  e:'🍎', s:['man','za','na']},
+  {p:'pelota',   e:'⚽', s:['pe','lo','ta']},
+  {p:'ventana',  e:'🪟', s:['ven','ta','na']},
+  {p:'tortuga',  e:'🐢', s:['tor','tu','ga']},
+  {p:'caballo',  e:'🐴', s:['ca','ba','llo']},
+  {p:'estrella', e:'⭐', s:['es','tre','lla']},
+  {p:'mariposa', e:'🦋', s:['ma','ri','po','sa']},
+  {p:'elefante', e:'🐘', s:['e','le','fan','te']},
+  {p:'zanahoria',e:'🥕', s:['za','na','ho','ria']},
+  {p:'helado',   e:'🍦', s:['he','la','do']},
+  {p:'regalo',   e:'🎁', s:['re','ga','lo']},
+  {p:'camino',   e:'🛤️', s:['ca','mi','no']}
+];
+
+const RIMAS = [
+  {a:'gato',e:'🐱', b:'pato'}, {a:'luna',e:'🌙', b:'cuna'},
+  {a:'mesa',e:'🍽️', b:'fresa'}, {a:'oso',e:'🐻', b:'queso'},
+  {a:'globo',e:'🎈', b:'lobo'}, {a:'abeja',e:'🐝', b:'oveja'},
+  {a:'vaca',e:'🐄', b:'hamaca'}, {a:'silla',e:'🪑', b:'orilla'},
+  {a:'nube',e:'☁️', b:'sube'}, {a:'pera',e:'🍐', b:'escalera'},
+  {a:'casa',e:'🏠', b:'masa'}, {a:'flor',e:'🌸', b:'color'},
+  {a:'raton',e:'🐭', b:'limon'}, {a:'estrella',e:'⭐', b:'botella'}
+];
+
+const FRASES = [
+  {t:'El pez nada en el ___.',        r:'agua'},
+  {t:'La abeja vuela hacia la ___.',  r:'flor'},
+  {t:'El gato toma ___.',             r:'leche'},
+  {t:'La lluvia cae de la ___.',      r:'nube'},
+  {t:'El avión vuela por el ___.',    r:'cielo'},
+  {t:'Duermo en mi ___.',             r:'cama'},
+  {t:'Leo un ___ en la escuela.',     r:'libro'},
+  {t:'El pan se come con ___.',       r:'queso'},
+  {t:'Escribo con un ___.',           r:'lápiz'},
+  {t:'El barco navega en el ___.',    r:'mar'},
+  {t:'Me pongo los zapatos en los ___.', r:'pies'},
+  {t:'La vaca vive en la ___.',       r:'granja'}
+];
+const POOL_FRASES = ['agua','flor','leche','nube','cielo','cama','libro','queso',
+                     'lápiz','mar','pies','granja','fuego','piedra','árbol','coche'];
+
+const CON_VOCAL   = PALABRAS.filter(w => 'aeiou'.includes(sinAcento(w.p)[0]));
+const PLANAS      = PALABRAS.filter(w => /^[a-z]+$/.test(sinAcento(w.p)));
+const DE2         = PALABRAS.filter(w => w.s.length === 2);
+const DE3MAS      = PALABRAS.filter(w => w.s.length >= 3);
+const TODAS_SILABAS = [...new Set(PALABRAS.flatMap(w => w.s))];
+
+const tomar = a => a[az(0, a.length-1)];
+
+/* n elementos distintos de una lista, excluyendo los que ya están */
+function distintos(lista, n, fuera, clave){
+  const k = clave || (x => x);
+  const usados = new Set(fuera.map(k));
+  const res = [];
+  let giros = 0;
+  while (res.length < n && giros < 400){
+    giros++;
+    const c = tomar(lista);
+    if (usados.has(k(c))) continue;
+    usados.add(k(c)); res.push(c);
+  }
+  return res;
+}
+
+/* Cambia una vocal: genera confusiones reales (casa → cosa, cesa) */
+function variarVocal(palabra){
+  const base = sinAcento(palabra);
+  const pos = [];
+  for (let i=0;i<base.length;i++) if ('aeiou'.includes(base[i])) pos.push(i);
+  if (!pos.length) return null;
+  const i = tomar(pos);
+  const otras = 'aeiou'.split('').filter(v => v !== base[i]);
+  return base.slice(0,i) + tomar(otras) + base.slice(i+1);
+}
+
+function opcionesTexto(correcta, distractoras, chico){
+  const lista = mezclar([correcta, ...distractoras]);
+  return lista.map(t => ({ etiqueta: MAYUS(t), valor:t, chico: !!chico }));
+}
+
+/* --- Escalera de Edain (4 años) --- */
+const LETRAS_CHICO = [
+  { id:1, nombre:'Encuentra la letra', icono:'🔤', preguntas:5, gen(){
+      const l = tomar(LETRAS_FACILES);
+      const otras = distintos(LETRAS_FACILES, 2, [l]);
+      const ops = mezclar([l, ...otras]).map(x => ({etiqueta:x, valor:x}));
+      return { texto:`Toca la letra ${l}`, hablado:`Toca la letra ${l}`,
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===l) }; }},
+
+  { id:2, nombre:'Las vocales', icono:'🅰️', preguntas:5, gen(){
+      const w = tomar(CON_VOCAL);
+      const v = MAYUS(sinAcento(w.p)[0]);
+      const otras = distintos(VOCALES, 2, [v]);
+      const ops = mezclar([v, ...otras]).map(x => ({etiqueta:x, valor:x}));
+      return { texto:'¿Con qué letra empieza?', hablado:`${w.p}. ¿Con qué letra empieza?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===v) }; }},
+
+  { id:3, nombre:'¿Con qué empieza?', icono:'🔍', preguntas:5, gen(){
+      const w = tomar(PLANAS);
+      const l = MAYUS(sinAcento(w.p)[0]);
+      const otras = distintos(PLANAS, 2, [w], x => sinAcento(x.p)[0]);
+      const ops = mezclar([w, ...otras]).map(x => ({emoji:x.e, valor:x.p}));
+      return { texto:`¿Cuál empieza con ${l}?`, hablado:`¿Cuál empieza con la letra ${l}?`,
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.p) }; }},
+
+  { id:4, nombre:'Junta las sílabas', icono:'🧩', preguntas:5, gen(){
+      const w = tomar(DE2);
+      const falta = w.s[1];
+      const otras = distintos(TODAS_SILABAS, 2, [falta]);
+      const ops = mezclar([falta, ...otras]).map(x => ({etiqueta:MAYUS(x), valor:x, chico:true}));
+      return { texto:'¿Qué sílaba falta?', hablado:`${w.p}. ¿Qué sílaba falta?`,
+               visual:{tipo:'silabas', e:w.e, partes:[w.s[0], null]},
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===falta) }; }},
+
+  { id:5, nombre:'Encuentra la palabra', icono:'📕', preguntas:5, gen(){
+      const w = tomar(DE2);
+      const otras = distintos(DE2, 2, [w], x => x.p).map(x => x.p);
+      const ops = opcionesTexto(w.p, otras, true);
+      return { texto:'¿Cuál es la palabra?', hablado:`${w.p}. ¿Cuál es la palabra?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.p) }; }}
+];
+
+/* --- Escalera de Elijah (6 años) --- */
+const LETRAS_GRANDE = [
+  { id:1, nombre:'La letra que falta', icono:'🔤', preguntas:6, gen(){
+      const w = tomar(PLANAS);
+      const base = sinAcento(w.p);
+      const i = az(0, base.length-1);
+      const l = MAYUS(base[i]);
+      const otras = distintos(LETRAS_FACILES, 3, [l]);
+      const ops = mezclar([l, ...otras]).map(x => ({etiqueta:x, valor:x}));
+      const letras = MAYUS(base).split('');
+      letras[i] = null;
+      return { texto:'¿Qué letra falta?', hablado:`${w.p}. ¿Qué letra falta?`,
+               visual:{tipo:'letras', e:w.e, partes:letras},
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===l) }; }},
+
+  { id:2, nombre:'La primera letra', icono:'🅰️', preguntas:6, gen(){
+      const w = tomar(PLANAS);
+      const l = MAYUS(sinAcento(w.p)[0]);
+      const otras = distintos(LETRAS_FACILES, 3, [l]);
+      const ops = mezclar([l, ...otras]).map(x => ({etiqueta:x, valor:x}));
+      return { texto:'¿Con qué letra empieza?', hablado:`${w.p}. ¿Con qué letra empieza?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===l) }; }},
+
+  { id:3, nombre:'La sílaba que falta', icono:'🧩', preguntas:6, gen(){
+      const w = tomar(DE3MAS);
+      const i = az(0, w.s.length-1);
+      const falta = w.s[i];
+      const otras = distintos(TODAS_SILABAS, 3, [falta]);
+      const ops = mezclar([falta, ...otras]).map(x => ({etiqueta:MAYUS(x), valor:x, chico:true}));
+      const partes = w.s.slice(); partes[i] = null;
+      return { texto:'¿Qué sílaba falta?', hablado:`${w.p}. ¿Qué sílaba falta?`,
+               visual:{tipo:'silabas', e:w.e, partes},
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===falta) }; }},
+
+  { id:4, nombre:'Lee con cuidado', icono:'👀', preguntas:6, gen(){
+      const w = tomar(PLANAS);
+      const base = sinAcento(w.p);
+      const vistos = new Set([base]);
+      const trampas = [];
+      let giros = 0;
+      while (trampas.length < 3 && giros < 60){
+        giros++;
+        const v = variarVocal(base);
+        if (!v || vistos.has(v)) continue;
+        vistos.add(v); trampas.push(v);
+      }
+      while (trampas.length < 3){
+        const otra = tomar(PLANAS).p;
+        if (!vistos.has(otra)){ vistos.add(otra); trampas.push(otra); }
+      }
+      const ops = opcionesTexto(base, trampas, true);
+      return { texto:'¿Cuál está bien escrita?', hablado:`${w.p}. ¿Cuál está bien escrita?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===base) }; }},
+
+  { id:5, nombre:'Cuenta las sílabas', icono:'👏', preguntas:6, gen(){
+      const w = tomar(PALABRAS);
+      const n = w.s.length;
+      const ops = mezclar([1,2,3,4]).map(x => ({etiqueta:String(x), valor:x}));
+      return { texto:`¿Cuántas sílabas tiene ${MAYUS(w.p)}?`,
+               hablado:`${w.p}. ¿Cuántas sílabas tiene?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===n) }; }},
+
+  { id:6, nombre:'El orden correcto', icono:'🔀', preguntas:6, gen(){
+      const w = tomar(DE3MAS);
+      const bien = w.s.join('');
+      const vistos = new Set([bien]);
+      const revueltas = [];
+      let giros = 0;
+      while (revueltas.length < 3 && giros < 60){
+        giros++;
+        const r = mezclar(w.s).join('');
+        if (vistos.has(r)) continue;
+        vistos.add(r); revueltas.push(r);
+      }
+      while (revueltas.length < 3){
+        const otra = tomar(DE3MAS);
+        const r = mezclar(otra.s).join('');
+        if (!vistos.has(r)){ vistos.add(r); revueltas.push(r); }
+      }
+      const ops = opcionesTexto(bien, revueltas, true);
+      return { texto:'¿Cuál está bien escrita?', hablado:`${w.p}. ¿Cuál está bien escrita?`,
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===bien) }; }},
+
+  { id:7, nombre:'Encuentra la rima', icono:'🎵', preguntas:6, gen(){
+      const r = tomar(RIMAS);
+      const cola = sinAcento(r.a).slice(-2);
+      const fuera = new Set([r.a, r.b]);
+      const otras = [];
+      let giros = 0;
+      /* Ninguna distractora puede rimar también: se descarta por terminación. */
+      while (otras.length < 3 && giros < 300){
+        giros++;
+        const c = tomar(PALABRAS).p;
+        if (fuera.has(c) || sinAcento(c).slice(-2) === cola) continue;
+        fuera.add(c); otras.push(c);
+      }
+      const ops = opcionesTexto(r.b, otras, true);
+      return { texto:`¿Cuál rima con ${MAYUS(r.a)}?`, hablado:`¿Cuál rima con ${r.a}?`,
+               visual:{tipo:'emoji', e:r.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===r.b) }; }},
+
+  { id:8, nombre:'Completa la frase', icono:'📜', preguntas:6, gen(){
+      const f = tomar(FRASES);
+      const otras = distintos(POOL_FRASES, 3, [f.r]);
+      const ops = opcionesTexto(f.r, otras, true);
+      return { texto:f.t, hablado:f.t.replace('___','...'),
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.r) }; }}
+];
+
+const BIOMA_LETRAS = {
+  id:'letras', nombre:'Torre de las Letras', icono:'📖',
+  descripcion:'Arma palabras con bloques de letras', color:'t-amatista', tono:'#8B6BD9',
+  niveles: p => p === 'chico' ? LETRAS_CHICO : LETRAS_GRANDE
+};
+
+/* ============================ biomes/geografia ============================ */
+/* Banderas por capas CSS: se ven igual en Windows, Mac, Android y iOS. */
+const BANDERAS = [
+  {n:'México', c:'América', cap:'Ciudad de México', facil:true,
+   capas:['linear-gradient(90deg,#006847 0 33.34%,#FFFFFF 33.34% 66.67%,#CE1126 66.67% 100%)'],
+   partes:[{k:'disco', color:'#8C6239', tam:30}]},
+  {n:'Francia', c:'Europa', cap:'París', facil:true,
+   capas:['linear-gradient(90deg,#0055A4 0 33.34%,#FFFFFF 33.34% 66.67%,#EF4135 66.67% 100%)']},
+  {n:'Alemania', c:'Europa', cap:'Berlín', facil:true,
+   capas:['linear-gradient(180deg,#111111 0 33.34%,#DD0000 33.34% 66.67%,#FFCE00 66.67% 100%)']},
+  {n:'España', c:'Europa', cap:'Madrid', facil:true,
+   capas:['linear-gradient(180deg,#AA151B 0 25%,#F1BF00 25% 75%,#AA151B 75% 100%)']},
+  {n:'Japón', c:'Asia', cap:'Tokio', facil:true,
+   capas:['linear-gradient(#FFFFFF,#FFFFFF)'], partes:[{k:'disco', color:'#BC002D', tam:44}]},
+  {n:'Canadá', c:'América', cap:'Ottawa', facil:true,
+   capas:['linear-gradient(90deg,#D80621 0 25%,#FFFFFF 25% 75%,#D80621 75% 100%)'],
+   partes:[{k:'hoja', texto:'🍁'}]},
+  {n:'Brasil', c:'América', cap:'Brasilia',
+   capas:['linear-gradient(#009C3B,#009C3B)'],
+   partes:[{k:'rombo', color:'#FFDF00'},{k:'disco', color:'#002776', tam:36}]},
+  {n:'Estados Unidos', c:'América', cap:'Washington',
+   capas:['repeating-linear-gradient(180deg,#B22234 0 7.69%,#FFFFFF 7.69% 15.38%)'],
+   partes:[{k:'canton', color:'#3C3B6E'}]},
+  {n:'Argentina', c:'América', cap:'Buenos Aires',
+   capas:['linear-gradient(180deg,#74ACDF 0 33.34%,#FFFFFF 33.34% 66.67%,#74ACDF 66.67% 100%)'],
+   partes:[{k:'disco', color:'#F6B40E', tam:26}]},
+  {n:'Colombia', c:'América', cap:'Bogotá',
+   capas:['linear-gradient(180deg,#FCD116 0 50%,#003893 50% 75%,#CE1126 75% 100%)']},
+  {n:'Perú', c:'América', cap:'Lima',
+   capas:['linear-gradient(90deg,#D91023 0 33.34%,#FFFFFF 33.34% 66.67%,#D91023 66.67% 100%)']},
+  {n:'Países Bajos', c:'Europa', cap:'Ámsterdam',
+   capas:['linear-gradient(180deg,#AE1C28 0 33.34%,#FFFFFF 33.34% 66.67%,#21468B 66.67% 100%)']},
+  {n:'Bélgica', c:'Europa', cap:'Bruselas',
+   capas:['linear-gradient(90deg,#111111 0 33.34%,#FDDA24 33.34% 66.67%,#EF3340 66.67% 100%)']},
+  {n:'Irlanda', c:'Europa', cap:'Dublín',
+   capas:['linear-gradient(90deg,#169B62 0 33.34%,#FFFFFF 33.34% 66.67%,#FF883E 66.67% 100%)']},
+  {n:'India', c:'Asia', cap:'Nueva Delhi',
+   capas:['linear-gradient(180deg,#FF9933 0 33.34%,#FFFFFF 33.34% 66.67%,#138808 66.67% 100%)'],
+   partes:[{k:'disco', color:'#000080', tam:24}]},
+  {n:'Nigeria', c:'África', cap:'Abuya',
+   capas:['linear-gradient(90deg,#008751 0 33.34%,#FFFFFF 33.34% 66.67%,#008751 66.67% 100%)']},
+  {n:'Egipto', c:'África', cap:'El Cairo',
+   capas:['linear-gradient(180deg,#CE1126 0 33.34%,#FFFFFF 33.34% 66.67%,#111111 66.67% 100%)']}
+];
+const BANDERAS_FACILES = BANDERAS.filter(b => b.facil);
+const CONTINENTES = ['América','Europa','Asia','África','Oceanía','Antártida'];
+
+/* `g` es el artículo: sin él saldrían frases como "el montaña". */
+const ACCIDENTES = [
+  {n:'montaña', e:'⛰️', g:'la'}, {n:'volcán', e:'🌋', g:'el'}, {n:'desierto', e:'🏜️', g:'el'},
+  {n:'bosque', e:'🌲', g:'el'},  {n:'isla', e:'🏝️', g:'la'},  {n:'playa', e:'🏖️', g:'la'},
+  {n:'mar', e:'🌊', g:'el'},     {n:'río', e:'🏞️', g:'el'}
+];
+
+const TIERRA_AGUA = [
+  {n:'montaña', e:'⛰️', t:'Tierra'}, {n:'desierto', e:'🏜️', t:'Tierra'},
+  {n:'bosque', e:'🌲', t:'Tierra'},  {n:'volcán', e:'🌋', t:'Tierra'},
+  {n:'mar', e:'🌊', t:'Agua'},       {n:'río', e:'🏞️', t:'Agua'},
+  {n:'lago', e:'💧', t:'Agua'}
+];
+
+const HABITATS = [
+  {a:'pingüino', g:'el', e:'🐧', h:'hielo',    he:'🧊'},
+  {a:'camello',  g:'el', e:'🐫', h:'desierto', he:'🏜️'},
+  {a:'pez',      g:'el', e:'🐟', h:'mar',      he:'🌊'},
+  {a:'tortuga',  g:'la', e:'🐢', h:'mar',      he:'🌊'},
+  {a:'mono',     g:'el', e:'🐒', h:'selva',    he:'🌴'},
+  {a:'oso',      g:'el', e:'🐻', h:'bosque',   he:'🌲'},
+  {a:'vaca',     g:'la', e:'🐄', h:'campo',    he:'🌾'},
+  {a:'cabra',    g:'la', e:'🐐', h:'montaña',  he:'⛰️'}
+];
+
+const CLIMAS = [
+  {q:'¿Dónde hace mucho FRÍO?', hq:'¿Dónde hace mucho frío?',
+   r:{n:'nieve', e:'❄️'}, d:[{n:'desierto', e:'🏜️'},{n:'playa', e:'🏖️'}]},
+  {q:'¿Dónde hace mucho CALOR?', hq:'¿Dónde hace mucho calor?',
+   r:{n:'desierto', e:'🏜️'}, d:[{n:'nieve', e:'❄️'},{n:'montaña nevada', e:'🏔️'}]},
+  {q:'¿Dónde llueve mucho?', hq:'¿Dónde llueve mucho?',
+   r:{n:'selva', e:'🌴'}, d:[{n:'desierto', e:'🏜️'},{n:'nieve', e:'❄️'}]},
+  {q:'¿Dónde hay mucha agua?', hq:'¿Dónde hay mucha agua?',
+   r:{n:'mar', e:'🌊'}, d:[{n:'desierto', e:'🏜️'},{n:'montaña', e:'⛰️'}]}
+];
+
+const ANIMALES_CONT = [
+  {n:'canguro', g:'el', e:'🦘', c:'Oceanía'}, {n:'koala', g:'el', e:'🐨', c:'Oceanía'},
+  {n:'panda', g:'el', e:'🐼', c:'Asia'},      {n:'tigre', g:'el', e:'🐅', c:'Asia'},
+  {n:'jirafa', g:'la', e:'🦒', c:'África'},   {n:'cebra', g:'la', e:'🦓', c:'África'},
+  {n:'león', g:'el', e:'🦁', c:'África'},     {n:'hipopótamo', g:'el', e:'🦛', c:'África'},
+  {n:'gorila', g:'el', e:'🦍', c:'África'},   {n:'pingüino', g:'el', e:'🐧', c:'Antártida'},
+  {n:'llama', g:'la', e:'🦙', c:'América'},   {n:'bisonte', g:'el', e:'🦬', c:'América'},
+  {n:'jaguar', g:'el', e:'🐆', c:'América'}
+];
+
+const MUNDO_Q = [
+  {t:'¿Cuál es el océano más grande?', r:'Pacífico', d:['Atlántico','Índico','Ártico']},
+  {t:'¿Qué océano está entre América y Europa?', r:'Atlántico', d:['Pacífico','Índico','Ártico']},
+  {t:'¿Cuántos océanos hay en el mundo?', r:'5', d:['3','7','10']},
+  {t:'¿Qué océano está al oeste de México?', r:'Pacífico', d:['Atlántico','Índico','Ártico']},
+  {t:'¿Qué océano es el más frío?', r:'Ártico', d:['Pacífico','Atlántico','Índico']},
+  {t:'¿Qué océano está al sur de Asia?', r:'Índico', d:['Atlántico','Ártico','Pacífico']},
+  {t:'¿Cuántos continentes hay?', r:'6', d:['3','8','12']},
+  {t:'¿En qué continente está México?', r:'América', d:['Europa','Asia','África']},
+  {t:'¿Cuál es el continente más grande?', r:'Asia', d:['África','América','Europa']},
+  {t:'¿Cuál es el continente más frío?', r:'Antártida', d:['Europa','Asia','Oceanía']},
+  {t:'¿En qué continente está Egipto?', r:'África', d:['Asia','Europa','Oceanía']},
+  {t:'¿En qué continente está Japón?', r:'Asia', d:['Europa','África','América']}
+];
+
+const MEXICO_Q = [
+  {t:'¿Cuál es la capital de México?', r:'Ciudad de México', d:['Guadalajara','Monterrey','Puebla']},
+  {t:'¿Cuál es la capital de Coahuila?', r:'Saltillo', d:['Torreón','Monclova','Piedras Negras']},
+  {t:'¿En qué estado está Saltillo?', r:'Coahuila', d:['Nuevo León','Durango','Zacatecas']},
+  {t:'¿Qué idioma se habla en México?', r:'Español', d:['Inglés','Francés','Portugués']},
+  {t:'¿De qué colores es la bandera de México?', r:'Verde, blanco y rojo',
+   d:['Azul, blanco y rojo','Rojo y amarillo','Verde y blanco']},
+  {t:'¿Qué animal está en la bandera de México?', r:'Un águila', d:['Un león','Un oso','Un lobo']},
+  {t:'¿Cuál es la montaña más alta de México?', r:'Pico de Orizaba',
+   d:['Popocatépetl','Iztaccíhuatl','Nevado de Toluca']},
+  {t:'¿Cómo se llama el mar al este de Yucatán?', r:'Mar Caribe',
+   d:['Mar Mediterráneo','Mar Rojo','Mar Negro']},
+  {t:'¿Cuál es el río más largo de México?', r:'Río Bravo', d:['Río Balsas','Río Lerma','Río Pánuco']}
+];
+
+const CARDINALES_Q = [
+  {t:'¿Qué país está al NORTE de México?', r:'Estados Unidos', d:['Guatemala','Belice','Canadá']},
+  {t:'¿Qué país está al SUR de México?', r:'Guatemala', d:['Estados Unidos','Canadá','Cuba']},
+  {t:'¿Qué país está al norte de Estados Unidos?', r:'Canadá', d:['México','Brasil','Guatemala']},
+  {t:'¿Qué océano está al OESTE de México?', r:'Pacífico', d:['Atlántico','Índico','Ártico']},
+  {t:'¿Qué golfo está al ESTE de México?', r:'Golfo de México', d:['Golfo Pérsico','Mar Rojo','Mar Negro']},
+  {t:'¿Por dónde sale el Sol?', r:'Este', d:['Oeste','Norte','Sur']},
+  {t:'¿Por dónde se mete el Sol?', r:'Oeste', d:['Este','Norte','Sur']},
+  {t:'En un mapa, ¿qué punto está arriba?', r:'Norte', d:['Sur','Este','Oeste']},
+  {t:'En un mapa, ¿qué punto está abajo?', r:'Sur', d:['Norte','Este','Oeste']}
+];
+
+/* Arma una pregunta de banco: respuesta correcta + distractores propios */
+function deBanco(banco, visual){
+  const f = tomar(banco);
+  const ops = mezclar([f.r, ...f.d]).map(x => ({etiqueta:x, valor:x, chico:true}));
+  return { texto:f.t, hablado:f.hq || f.t, visual: visual ? visual(f) : null,
+           opciones:ops, respuesta:ops.findIndex(o => o.valor === f.r) };
+}
+
+/* --- Escalera de Edain (4 años) --- */
+const GEO_CHICO = [
+  { id:1, nombre:'La Tierra', icono:'⛰️', preguntas:5, gen(){
+      const a = tomar(ACCIDENTES);
+      const otras = distintos(ACCIDENTES, 2, [a], x => x.n);
+      const ops = mezclar([a, ...otras]).map(x => ({emoji:x.e, valor:x.n}));
+      return { texto:`Toca ${a.g} ${a.n}`, hablado:`Toca ${a.g} ${a.n}`,
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.n) }; }},
+
+  { id:2, nombre:'Tierra o agua', icono:'💧', preguntas:5, gen(){
+      const x = tomar(TIERRA_AGUA);
+      const ops = mezclar(['Tierra','Agua']).map(t => ({etiqueta:t, valor:t, chico:true}));
+      return { texto:'¿Esto es tierra o agua?', hablado:`${x.n}. ¿Es tierra o es agua?`,
+               visual:{tipo:'emoji', e:x.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===x.t) }; }},
+
+  { id:3, nombre:'Las banderas', icono:'🚩', preguntas:5, gen(){
+      const b = tomar(BANDERAS_FACILES);
+      const otras = distintos(BANDERAS_FACILES, 2, [b], x => x.n);
+      const ops = mezclar([b, ...otras]).map(x => ({bandera:x, valor:x.n}));
+      return { texto:`¿Cuál es la bandera de ${b.n}?`, hablado:`¿Cuál es la bandera de ${b.n}?`,
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.n) }; }},
+
+  { id:4, nombre:'¿Dónde vive?', icono:'🐾', preguntas:5, gen(){
+      const h = tomar(HABITATS);
+      const otras = distintos(HABITATS, 2, [h], x => x.h);
+      const ops = mezclar([h, ...otras]).map(x => ({emoji:x.he, valor:x.h}));
+      return { texto:`¿Dónde vive ${h.g} ${h.a}?`, hablado:`¿Dónde vive ${h.g} ${h.a}?`,
+               visual:{tipo:'emoji', e:h.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===h.h) }; }},
+
+  { id:5, nombre:'Frío y calor', icono:'🌡️', preguntas:4, gen(){
+      const c = tomar(CLIMAS);
+      const ops = mezclar([c.r, ...c.d]).map(x => ({emoji:x.e, valor:x.n}));
+      return { texto:c.q, hablado:c.hq, visual:null,
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===c.r.n) }; }}
+];
+
+/* --- Escalera de Elijah (6 años) --- */
+const GEO_GRANDE = [
+  { id:1, nombre:'Paisajes', icono:'⛰️', preguntas:6, gen(){
+      const a = tomar(ACCIDENTES);
+      const otras = distintos(ACCIDENTES, 3, [a], x => x.n).map(x => x.n);
+      const ops = mezclar([a.n, ...otras]).map(x => ({etiqueta:MAYUS(x), valor:x, chico:true}));
+      return { texto:'¿Qué es esto?', hablado:'¿Qué paisaje es este?',
+               visual:{tipo:'emoji', e:a.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.n) }; }},
+
+  { id:2, nombre:'Banderas del mundo', icono:'🚩', preguntas:6, gen(){
+      const b = tomar(BANDERAS);
+      const otras = distintos(BANDERAS, 3, [b], x => x.n).map(x => x.n);
+      const ops = mezclar([b.n, ...otras]).map(x => ({etiqueta:x, valor:x, chico:true}));
+      return { texto:'¿De qué país es esta bandera?', hablado:'¿De qué país es esta bandera?',
+               visual:{tipo:'bandera', b}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.n) }; }},
+
+  { id:3, nombre:'Los continentes', icono:'🌍', preguntas:6, gen(){
+      const b = tomar(BANDERAS);
+      const otros = distintos(CONTINENTES, 3, [b.c]);
+      const ops = mezclar([b.c, ...otros]).map(x => ({etiqueta:x, valor:x, chico:true}));
+      return { texto:`¿En qué continente está ${b.n}?`,
+               hablado:`¿En qué continente está ${b.n}?`,
+               visual:{tipo:'bandera', b}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.c) }; }},
+
+  { id:4, nombre:'Océanos y mundo', icono:'🌊', preguntas:6, gen(){ return deBanco(MUNDO_Q); }},
+
+  { id:5, nombre:'Mi país', icono:'🇲🇽', preguntas:6, gen(){
+      const q = deBanco(MEXICO_Q);
+      q.visual = {tipo:'bandera', b:BANDERAS[0]};
+      return q; }},
+
+  { id:6, nombre:'Norte y sur', icono:'🧭', preguntas:6, gen(){ return deBanco(CARDINALES_Q); }},
+
+  { id:7, nombre:'Animales del mundo', icono:'🦒', preguntas:6, gen(){
+      const a = tomar(ANIMALES_CONT);
+      const otros = distintos(CONTINENTES, 3, [a.c]);
+      const ops = mezclar([a.c, ...otros]).map(x => ({etiqueta:x, valor:x, chico:true}));
+      return { texto:`¿En qué continente vive ${a.g} ${a.n}?`,
+               hablado:`¿En qué continente vive ${a.g} ${a.n}?`,
+               visual:{tipo:'emoji', e:a.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.c) }; }},
+
+  { id:8, nombre:'Capitales', icono:'🏛️', preguntas:6, gen(){
+      const b = tomar(BANDERAS);
+      const otras = distintos(BANDERAS, 3, [b], x => x.cap).map(x => x.cap);
+      const ops = mezclar([b.cap, ...otras]).map(x => ({etiqueta:x, valor:x, chico:true}));
+      return { texto:`¿Cuál es la capital de ${b.n}?`, hablado:`¿Cuál es la capital de ${b.n}?`,
+               visual:{tipo:'bandera', b}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.cap) }; }}
+];
+
+const BIOMA_GEO = {
+  id:'geografia', nombre:'Continente Cartógrafo', icono:'🗺️',
+  descripcion:'Recorre el mundo bloque por bloque', color:'t-diamante', tono:'#3FCFCB',
+  niveles: p => p === 'chico' ? GEO_CHICO : GEO_GRANDE
+};
+
+/* ============================ biomes/ingles ============================ */
+const VOC_COLORES = [
+  {en:'red', es:'rojo', c:'#D14B3C'},      {en:'blue', es:'azul', c:'#3B6FD4'},
+  {en:'green', es:'verde', c:'#5BA83C'},   {en:'yellow', es:'amarillo', c:'#F0C22E'},
+  {en:'black', es:'negro', c:'#2A2E38'},   {en:'white', es:'blanco', c:'#F2EFE6'},
+  {en:'orange', es:'naranja', c:'#E8862C'},{en:'purple', es:'morado', c:'#8B6BD9'},
+  {en:'brown', es:'café', c:'#8B5A2B'},    {en:'pink', es:'rosa', c:'#E87BA8'}
+];
+const VOC_NUMEROS = [
+  {en:'one', es:'uno', n:1},   {en:'two', es:'dos', n:2},    {en:'three', es:'tres', n:3},
+  {en:'four', es:'cuatro', n:4},{en:'five', es:'cinco', n:5}, {en:'six', es:'seis', n:6},
+  {en:'seven', es:'siete', n:7},{en:'eight', es:'ocho', n:8}, {en:'nine', es:'nueve', n:9},
+  {en:'ten', es:'diez', n:10}
+];
+const VOC_ANIMALES = [
+  {en:'dog', es:'perro', e:'🐶'},   {en:'cat', es:'gato', e:'🐱'},
+  {en:'bird', es:'pájaro', e:'🐦'}, {en:'fish', es:'pez', e:'🐟'},
+  {en:'horse', es:'caballo', e:'🐴'},{en:'cow', es:'vaca', e:'🐄'},
+  {en:'pig', es:'cerdo', e:'🐷'},   {en:'duck', es:'pato', e:'🦆'},
+  {en:'bear', es:'oso', e:'🐻'},    {en:'lion', es:'león', e:'🦁'},
+  {en:'monkey', es:'mono', e:'🐒'}, {en:'rabbit', es:'conejo', e:'🐰'},
+  {en:'frog', es:'rana', e:'🐸'},   {en:'sheep', es:'oveja', e:'🐑'},
+  {en:'turtle', es:'tortuga', e:'🐢'}
+];
+const VOC_COMIDA = [
+  {en:'apple', es:'manzana', e:'🍎'}, {en:'banana', es:'plátano', e:'🍌'},
+  {en:'bread', es:'pan', e:'🍞'},     {en:'milk', es:'leche', e:'🥛'},
+  {en:'cheese', es:'queso', e:'🧀'},  {en:'egg', es:'huevo', e:'🥚'},
+  {en:'water', es:'agua', e:'💧'},    {en:'rice', es:'arroz', e:'🍚'},
+  {en:'cake', es:'pastel', e:'🎂'},   {en:'cookie', es:'galleta', e:'🍪'},
+  {en:'grapes', es:'uvas', e:'🍇'},   {en:'juice', es:'jugo', e:'🧃'}
+];
+const VOC_COSAS = [
+  {en:'house', es:'casa', e:'🏠'},   {en:'book', es:'libro', e:'📚'},
+  {en:'pencil', es:'lápiz', e:'✏️'}, {en:'chair', es:'silla', e:'🪑'},
+  {en:'door', es:'puerta', e:'🚪'},  {en:'car', es:'coche', e:'🚗'},
+  {en:'ball', es:'pelota', e:'⚽'},  {en:'tree', es:'árbol', e:'🌳'},
+  {en:'sun', es:'sol', e:'☀️'},      {en:'moon', es:'luna', e:'🌙'},
+  {en:'star', es:'estrella', e:'⭐'},{en:'flower', es:'flor', e:'🌸'}
+];
+const VOC_CUERPO = [
+  {en:'hand', es:'mano', e:'✋'},  {en:'eye', es:'ojo', e:'👁️'},
+  {en:'foot', es:'pie', e:'🦶'},   {en:'mouth', es:'boca', e:'👄'},
+  {en:'nose', es:'nariz', e:'👃'}, {en:'ear', es:'oreja', e:'👂'},
+  {en:'mom', es:'mamá', e:'👩'},   {en:'dad', es:'papá', e:'👨'},
+  {en:'baby', es:'bebé', e:'👶'}
+];
+const VOC_CON_DIBUJO = [...VOC_ANIMALES, ...VOC_COMIDA, ...VOC_COSAS, ...VOC_CUERPO];
+
+const FRASES_EN = [
+  {en:'Hello', es:'Hola'},                 {en:'Good morning', es:'Buenos días'},
+  {en:'Good night', es:'Buenas noches'},   {en:'Thank you', es:'Gracias'},
+  {en:'Please', es:'Por favor'},           {en:'Goodbye', es:'Adiós'},
+  {en:'How are you?', es:'¿Cómo estás?'},  {en:'My name is...', es:'Me llamo...'},
+  {en:"I'm sorry", es:'Perdón'},           {en:"You're welcome", es:'De nada'},
+  {en:'See you later', es:'Hasta luego'},  {en:'Good afternoon', es:'Buenas tardes'}
+];
+
+/* Solo marcos con "the": evitan el error a/an delante de vocal. */
+const MARCOS = ['I see the ___.', 'This is the ___.', 'I like the ___.', 'Look at the ___.'];
+
+const conEn = x => ({etiqueta:x, valor:x, chico:true});
+
+/* --- Escalera de Edain (4 años): todo por oído y dibujo --- */
+const ING_CHICO = [
+  { id:1, nombre:'Colors', icono:'🎨', preguntas:5, gen(){
+      const c = tomar(VOC_COLORES);
+      const otros = distintos(VOC_COLORES, 2, [c], x => x.en);
+      const ops = mezclar([c, ...otros]).map(x => ({muestra:x.c, valor:x.en}));
+      return { texto:`Toca el color ${MAYUS(c.en)}`,
+               hablado:[{t:'Toca el color', l:'es'}, {t:c.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===c.en) }; }},
+
+  { id:2, nombre:'Animals', icono:'🐶', preguntas:5, gen(){
+      const a = tomar(VOC_ANIMALES);
+      const otros = distintos(VOC_ANIMALES, 2, [a], x => x.en);
+      const ops = mezclar([a, ...otros]).map(x => ({emoji:x.e, valor:x.en}));
+      return { texto:`Encuentra el ${MAYUS(a.en)}`,
+               hablado:[{t:'Encuentra el', l:'es'}, {t:a.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.en) }; }},
+
+  { id:3, nombre:'Numbers', icono:'🔢', preguntas:5, gen(){
+      const n = tomar(VOC_NUMEROS.slice(0,5));
+      const otros = distintos(VOC_NUMEROS.slice(0,5), 2, [n], x => x.en);
+      const ops = mezclar([n, ...otros]).map(x => ({etiqueta:String(x.n), puntos:x.n, valor:x.en}));
+      return { texto:`Toca el número ${MAYUS(n.en)}`,
+               hablado:[{t:'Toca el número', l:'es'}, {t:n.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===n.en) }; }},
+
+  { id:4, nombre:'Food', icono:'🍎', preguntas:5, gen(){
+      const f = tomar(VOC_COMIDA);
+      const otros = distintos(VOC_COMIDA, 2, [f], x => x.en);
+      const ops = mezclar([f, ...otros]).map(x => ({emoji:x.e, valor:x.en}));
+      return { texto:`¿Dónde está el ${MAYUS(f.en)}?`,
+               hablado:[{t:'¿Dónde está el', l:'es'}, {t:f.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.en) }; }},
+
+  { id:5, nombre:'My family', icono:'👨‍👩‍👦', preguntas:5, gen(){
+      const b = tomar(VOC_CUERPO);
+      const otros = distintos(VOC_CUERPO, 2, [b], x => x.en);
+      const ops = mezclar([b, ...otros]).map(x => ({emoji:x.e, valor:x.en}));
+      return { texto:`Señala el ${MAYUS(b.en)}`,
+               hablado:[{t:'Señala el', l:'es'}, {t:b.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.en) }; }}
+];
+
+/* --- Escalera de Elijah (6 años): ya lee, así que aparece la palabra escrita --- */
+const ING_GRANDE = [
+  { id:1, nombre:'Colors & numbers', icono:'🎨', preguntas:6, gen(){
+      if (Math.random() < 0.5){
+        const c = tomar(VOC_COLORES);
+        const otros = distintos(VOC_COLORES, 3, [c], x => x.en).map(x => x.en);
+        const ops = mezclar([c.en, ...otros]).map(conEn);
+        return { texto:'¿Cómo se dice este color?',
+                 hablado:[{t:'¿Cómo se dice este color en inglés?', l:'es'}],
+                 visual:{tipo:'bloque', c:c.c},
+                 opciones:ops, respuesta:ops.findIndex(o=>o.valor===c.en) };
+      }
+      const n = tomar(VOC_NUMEROS.slice(0,10));
+      const otros = distintos(VOC_NUMEROS, 3, [n], x => x.en).map(x => x.en);
+      const ops = mezclar([n.en, ...otros]).map(conEn);
+      return { texto:'¿Cómo se dice este número?',
+               hablado:[{t:'¿Cómo se dice este número en inglés?', l:'es'}],
+               visual:{tipo:'cubos', cantidad:n.n},
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===n.en) }; }},
+
+  { id:2, nombre:'Animals', icono:'🐶', preguntas:6, gen(){
+      const a = tomar(VOC_ANIMALES);
+      const otros = distintos(VOC_ANIMALES, 3, [a], x => x.en).map(x => x.en);
+      const ops = mezclar([a.en, ...otros]).map(conEn);
+      return { texto:'¿Cómo se dice en inglés?', hablado:[{t:'¿Cómo se dice en inglés?', l:'es'}],
+               visual:{tipo:'emoji', e:a.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.en) }; }},
+
+  { id:3, nombre:'Food & things', icono:'🍎', preguntas:6, gen(){
+      const f = tomar([...VOC_COMIDA, ...VOC_COSAS]);
+      const otros = distintos([...VOC_COMIDA, ...VOC_COSAS], 3, [f], x => x.en).map(x => x.en);
+      const ops = mezclar([f.en, ...otros]).map(conEn);
+      return { texto:'¿Cómo se dice en inglés?', hablado:[{t:'¿Cómo se dice en inglés?', l:'es'}],
+               visual:{tipo:'emoji', e:f.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.en) }; }},
+
+  { id:4, nombre:'English to Spanish', icono:'➡️', preguntas:6, gen(){
+      const w = tomar(VOC_CON_DIBUJO);
+      const otros = distintos(VOC_CON_DIBUJO, 3, [w], x => x.es).map(x => x.es);
+      const ops = mezclar([w.es, ...otros]).map(conEn);
+      return { texto:`¿Qué significa ${MAYUS(w.en)}?`,
+               hablado:[{t:'¿Qué significa', l:'es'}, {t:w.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.es) }; }},
+
+  { id:5, nombre:'Spanish to English', icono:'⬅️', preguntas:6, gen(){
+      const w = tomar(VOC_CON_DIBUJO);
+      const otros = distintos(VOC_CON_DIBUJO, 3, [w], x => x.en).map(x => x.en);
+      const ops = mezclar([w.en, ...otros]).map(conEn);
+      return { texto:`¿Cómo se dice ${MAYUS(w.es)} en inglés?`,
+               hablado:[{t:`¿Cómo se dice ${w.es} en inglés?`, l:'es'}],
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.en) }; }},
+
+  { id:6, nombre:'Greetings', icono:'👋', preguntas:6, gen(){
+      const f = tomar(FRASES_EN);
+      const otras = distintos(FRASES_EN, 3, [f], x => x.en).map(x => x.en);
+      const ops = mezclar([f.en, ...otras]).map(conEn);
+      return { texto:`¿Cómo dices "${f.es}" en inglés?`,
+               hablado:[{t:`¿Cómo dices ${f.es} en inglés?`, l:'es'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.en) }; }},
+
+  { id:7, nombre:'Listen and choose', icono:'👂', preguntas:6, gen(){
+      const w = tomar(VOC_CON_DIBUJO);
+      const otros = distintos(VOC_CON_DIBUJO, 3, [w], x => x.en).map(x => x.en);
+      const ops = mezclar([w.en, ...otros]).map(conEn);
+      /* Sin dibujo a propósito: aquí el oído es el que trabaja. */
+      return { texto:'🔊 Escucha y elige la palabra',
+               hablado:[{t:'Escucha', l:'es'}, {t:w.en, l:'en'}, {t:w.en, l:'en'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.en) }; }},
+
+  { id:8, nombre:'Complete it', icono:'📝', preguntas:6, gen(){
+      const w = tomar(VOC_CON_DIBUJO);
+      const marco = tomar(MARCOS);
+      const otros = distintos(VOC_CON_DIBUJO, 3, [w], x => x.en).map(x => x.en);
+      const ops = mezclar([w.en, ...otros]).map(conEn);
+      return { texto:marco, hablado:[{t:marco.replace('___','...'), l:'en'}],
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.en) }; }}
+];
+
+const BIOMA_INGLES = {
+  id:'ingles', nombre:'Aldea Bilingüe', icono:'🏘️',
+  descripcion:'Aprende inglés escuchando y jugando', color:'t-rubi', tono:'#D14B3C',
+  niveles: p => p === 'chico' ? ING_CHICO : ING_GRANDE
+};
+
+/* ============================ biomes/frances ============================ */
+/* `g` es el artículo definido. En francés el género no se deduce, se aprende
+   junto con la palabra, así que va pegado al sustantivo desde el principio. */
+const FR_COULEURS = [
+  {fr:'rouge', es:'rojo', c:'#D14B3C'},   {fr:'bleu', es:'azul', c:'#3B6FD4'},
+  {fr:'vert', es:'verde', c:'#5BA83C'},   {fr:'jaune', es:'amarillo', c:'#F0C22E'},
+  {fr:'noir', es:'negro', c:'#2A2E38'},   {fr:'blanc', es:'blanco', c:'#F2EFE6'},
+  {fr:'orange', es:'naranja', c:'#E8862C'},{fr:'violet', es:'morado', c:'#8B6BD9'},
+  {fr:'marron', es:'café', c:'#8B5A2B'},  {fr:'rose', es:'rosa', c:'#E87BA8'}
+];
+const FR_NOMBRES = [
+  {fr:'un', es:'uno', n:1},     {fr:'deux', es:'dos', n:2},    {fr:'trois', es:'tres', n:3},
+  {fr:'quatre', es:'cuatro', n:4},{fr:'cinq', es:'cinco', n:5}, {fr:'six', es:'seis', n:6},
+  {fr:'sept', es:'siete', n:7}, {fr:'huit', es:'ocho', n:8},   {fr:'neuf', es:'nueve', n:9},
+  {fr:'dix', es:'diez', n:10}
+];
+const FR_ANIMAUX = [
+  {fr:'chien', g:'le', es:'perro', e:'🐶'},   {fr:'chat', g:'le', es:'gato', e:'🐱'},
+  {fr:'oiseau', g:"l'", es:'pájaro', e:'🐦'}, {fr:'poisson', g:'le', es:'pez', e:'🐟'},
+  {fr:'cheval', g:'le', es:'caballo', e:'🐴'},{fr:'vache', g:'la', es:'vaca', e:'🐄'},
+  {fr:'cochon', g:'le', es:'cerdo', e:'🐷'},  {fr:'canard', g:'le', es:'pato', e:'🦆'},
+  {fr:'ours', g:"l'", es:'oso', e:'🐻'},      {fr:'lion', g:'le', es:'león', e:'🦁'},
+  {fr:'singe', g:'le', es:'mono', e:'🐒'},    {fr:'lapin', g:'le', es:'conejo', e:'🐰'},
+  {fr:'grenouille', g:'la', es:'rana', e:'🐸'},{fr:'mouton', g:'le', es:'oveja', e:'🐑'},
+  {fr:'tortue', g:'la', es:'tortuga', e:'🐢'}
+];
+const FR_NOURRITURE = [
+  {fr:'pomme', g:'la', es:'manzana', e:'🍎'}, {fr:'banane', g:'la', es:'plátano', e:'🍌'},
+  {fr:'pain', g:'le', es:'pan', e:'🍞'},      {fr:'lait', g:'le', es:'leche', e:'🥛'},
+  {fr:'fromage', g:'le', es:'queso', e:'🧀'}, {fr:'œuf', g:"l'", es:'huevo', e:'🥚'},
+  {fr:'eau', g:"l'", es:'agua', e:'💧'},      {fr:'riz', g:'le', es:'arroz', e:'🍚'},
+  {fr:'gâteau', g:'le', es:'pastel', e:'🎂'}, {fr:'biscuit', g:'le', es:'galleta', e:'🍪'},
+  {fr:'jus', g:'le', es:'jugo', e:'🧃'}
+];
+const FR_CHOSES = [
+  {fr:'maison', g:'la', es:'casa', e:'🏠'},   {fr:'livre', g:'le', es:'libro', e:'📚'},
+  {fr:'crayon', g:'le', es:'lápiz', e:'✏️'},  {fr:'chaise', g:'la', es:'silla', e:'🪑'},
+  {fr:'porte', g:'la', es:'puerta', e:'🚪'},  {fr:'voiture', g:'la', es:'coche', e:'🚗'},
+  {fr:'ballon', g:'le', es:'pelota', e:'⚽'}, {fr:'arbre', g:"l'", es:'árbol', e:'🌳'},
+  {fr:'soleil', g:'le', es:'sol', e:'☀️'},    {fr:'lune', g:'la', es:'luna', e:'🌙'},
+  {fr:'étoile', g:"l'", es:'estrella', e:'⭐'},{fr:'fleur', g:'la', es:'flor', e:'🌸'}
+];
+const FR_CORPS = [
+  {fr:'main', g:'la', es:'mano', e:'✋'},   {fr:'œil', g:"l'", es:'ojo', e:'👁️'},
+  {fr:'pied', g:'le', es:'pie', e:'🦶'},   {fr:'bouche', g:'la', es:'boca', e:'👄'},
+  {fr:'nez', g:'le', es:'nariz', e:'👃'},  {fr:'oreille', g:"l'", es:'oreja', e:'👂'},
+  {fr:'maman', g:'la', es:'mamá', e:'👩'}, {fr:'papa', g:'le', es:'papá', e:'👨'},
+  {fr:'bébé', g:'le', es:'bebé', e:'👶'}
+];
+const FR_CON_DIBUJO = [...FR_ANIMAUX, ...FR_NOURRITURE, ...FR_CHOSES, ...FR_CORPS];
+
+const FR_PHRASES = [
+  {fr:'Bonjour', es:'Buenos días'},        {fr:'Bonsoir', es:'Buenas noches'},
+  {fr:'Merci', es:'Gracias'},              {fr:"S'il vous plaît", es:'Por favor'},
+  {fr:'Au revoir', es:'Adiós'},            {fr:'Comment ça va ?', es:'¿Cómo estás?'},
+  {fr:"Je m'appelle...", es:'Me llamo...'},{fr:'Pardon', es:'Perdón'},
+  {fr:'De rien', es:'De nada'},            {fr:'À bientôt', es:'Hasta luego'},
+  {fr:'Oui', es:'Sí'},                     {fr:'Non', es:'No'}
+];
+
+/* "le chien" pero "l'oiseau": el apóstrofo va pegado. */
+const conArticulo = w => w.g + (w.g.endsWith("'") ? '' : ' ') + w.fr;
+const conFr = x => ({etiqueta:x, valor:x, chico:true});
+
+/* --- Escalera de Edain (4 años): todo por oído y dibujo --- */
+const FRA_CHICO = [
+  { id:1, nombre:'Les couleurs', icono:'🎨', preguntas:5, gen(){
+      const c = tomar(FR_COULEURS);
+      const otros = distintos(FR_COULEURS, 2, [c], x => x.fr);
+      const ops = mezclar([c, ...otros]).map(x => ({muestra:x.c, valor:x.fr}));
+      return { texto:`Toca el color ${MAYUS(c.fr)}`,
+               hablado:[{t:'Toca el color', l:'es'}, {t:c.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===c.fr) }; }},
+
+  { id:2, nombre:'Les animaux', icono:'🐶', preguntas:5, gen(){
+      const a = tomar(FR_ANIMAUX);
+      const otros = distintos(FR_ANIMAUX, 2, [a], x => x.fr);
+      const ops = mezclar([a, ...otros]).map(x => ({emoji:x.e, valor:x.fr}));
+      return { texto:`Encuentra el ${MAYUS(a.fr)}`,
+               hablado:[{t:'Encuentra el', l:'es'}, {t:a.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.fr) }; }},
+
+  { id:3, nombre:'Les nombres', icono:'🔢', preguntas:5, gen(){
+      const n = tomar(FR_NOMBRES.slice(0,5));
+      const otros = distintos(FR_NOMBRES.slice(0,5), 2, [n], x => x.fr);
+      const ops = mezclar([n, ...otros]).map(x => ({etiqueta:String(x.n), puntos:x.n, valor:x.fr}));
+      return { texto:`Toca el número ${MAYUS(n.fr)}`,
+               hablado:[{t:'Toca el número', l:'es'}, {t:n.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===n.fr) }; }},
+
+  { id:4, nombre:'La nourriture', icono:'🍎', preguntas:5, gen(){
+      const f = tomar(FR_NOURRITURE);
+      const otros = distintos(FR_NOURRITURE, 2, [f], x => x.fr);
+      const ops = mezclar([f, ...otros]).map(x => ({emoji:x.e, valor:x.fr}));
+      return { texto:`¿Dónde está el ${MAYUS(f.fr)}?`,
+               hablado:[{t:'¿Dónde está el', l:'es'}, {t:f.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.fr) }; }},
+
+  { id:5, nombre:'Ma famille', icono:'👨‍👩‍👦', preguntas:5, gen(){
+      const b = tomar(FR_CORPS);
+      const otros = distintos(FR_CORPS, 2, [b], x => x.fr);
+      const ops = mezclar([b, ...otros]).map(x => ({emoji:x.e, valor:x.fr}));
+      return { texto:`Señala el ${MAYUS(b.fr)}`,
+               hablado:[{t:'Señala el', l:'es'}, {t:b.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===b.fr) }; }}
+];
+
+/* --- Escalera de Elijah (6 años) --- */
+const FRA_GRANDE = [
+  { id:1, nombre:'Couleurs & nombres', icono:'🎨', preguntas:6, gen(){
+      if (Math.random() < 0.5){
+        const c = tomar(FR_COULEURS);
+        const otros = distintos(FR_COULEURS, 3, [c], x => x.fr).map(x => x.fr);
+        const ops = mezclar([c.fr, ...otros]).map(conFr);
+        return { texto:'¿Cómo se dice este color?',
+                 hablado:[{t:'¿Cómo se dice este color en francés?', l:'es'}],
+                 visual:{tipo:'bloque', c:c.c},
+                 opciones:ops, respuesta:ops.findIndex(o=>o.valor===c.fr) };
+      }
+      const n = tomar(FR_NOMBRES);
+      const otros = distintos(FR_NOMBRES, 3, [n], x => x.fr).map(x => x.fr);
+      const ops = mezclar([n.fr, ...otros]).map(conFr);
+      return { texto:'¿Cómo se dice este número?',
+               hablado:[{t:'¿Cómo se dice este número en francés?', l:'es'}],
+               visual:{tipo:'cubos', cantidad:n.n},
+               opciones:ops, respuesta:ops.findIndex(o=>o.valor===n.fr) }; }},
+
+  { id:2, nombre:'Les animaux', icono:'🐶', preguntas:6, gen(){
+      const a = tomar(FR_ANIMAUX);
+      const otros = distintos(FR_ANIMAUX, 3, [a], x => x.fr).map(x => x.fr);
+      const ops = mezclar([a.fr, ...otros]).map(conFr);
+      return { texto:'¿Cómo se dice en francés?', hablado:[{t:'¿Cómo se dice en francés?', l:'es'}],
+               visual:{tipo:'emoji', e:a.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===a.fr) }; }},
+
+  { id:3, nombre:'Nourriture & objets', icono:'🥐', preguntas:6, gen(){
+      const banco = [...FR_NOURRITURE, ...FR_CHOSES];
+      const f = tomar(banco);
+      const otros = distintos(banco, 3, [f], x => x.fr).map(x => x.fr);
+      const ops = mezclar([f.fr, ...otros]).map(conFr);
+      return { texto:'¿Cómo se dice en francés?', hablado:[{t:'¿Cómo se dice en francés?', l:'es'}],
+               visual:{tipo:'emoji', e:f.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.fr) }; }},
+
+  { id:4, nombre:'Du français à l\'espagnol', icono:'➡️', preguntas:6, gen(){
+      const w = tomar(FR_CON_DIBUJO);
+      const otros = distintos(FR_CON_DIBUJO, 3, [w], x => x.es).map(x => x.es);
+      const ops = mezclar([w.es, ...otros]).map(conFr);
+      return { texto:`¿Qué significa ${MAYUS(w.fr)}?`,
+               hablado:[{t:'¿Qué significa', l:'es'}, {t:w.fr, l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.es) }; }},
+
+  { id:5, nombre:'De l\'espagnol au français', icono:'⬅️', preguntas:6, gen(){
+      const w = tomar(FR_CON_DIBUJO);
+      const otros = distintos(FR_CON_DIBUJO, 3, [w], x => x.fr).map(x => x.fr);
+      const ops = mezclar([w.fr, ...otros]).map(conFr);
+      return { texto:`¿Cómo se dice ${MAYUS(w.es)} en francés?`,
+               hablado:[{t:`¿Cómo se dice ${w.es} en francés?`, l:'es'}],
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.fr) }; }},
+
+  { id:6, nombre:'Le, la ou l\'', icono:'⚖️', preguntas:6, gen(){
+      const w = tomar(FR_CON_DIBUJO);
+      const ops = mezclar(['le','la',"l'"]).map(x => ({etiqueta:x, valor:x, chico:true}));
+      return { texto:`¿Se dice le, la o l' ${w.fr}?`,
+               hablado:[{t:'¿Qué artículo lleva', l:'es'}, {t:w.fr, l:'fr'}, {t:'?', l:'es'}],
+               visual:{tipo:'emoji', e:w.e}, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.g) }; }},
+
+  { id:7, nombre:'Les salutations', icono:'👋', preguntas:6, gen(){
+      const f = tomar(FR_PHRASES);
+      const otras = distintos(FR_PHRASES, 3, [f], x => x.fr).map(x => x.fr);
+      const ops = mezclar([f.fr, ...otras]).map(conFr);
+      return { texto:`¿Cómo dices "${f.es}" en francés?`,
+               hablado:[{t:`¿Cómo dices ${f.es} en francés?`, l:'es'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===f.fr) }; }},
+
+  { id:8, nombre:'Écoute et choisis', icono:'👂', preguntas:6, gen(){
+      const w = tomar(FR_CON_DIBUJO);
+      const otros = distintos(FR_CON_DIBUJO, 3, [w], x => x.fr);
+      const ops = mezclar([w, ...otros]).map(x => ({etiqueta:conArticulo(x), valor:x.fr, chico:true}));
+      /* Sin dibujo a propósito: aquí el oído es el que trabaja. */
+      return { texto:'🔊 Escucha y elige la palabra',
+               hablado:[{t:'Escucha', l:'es'}, {t:conArticulo(w), l:'fr'}, {t:conArticulo(w), l:'fr'}],
+               visual:null, opciones:ops, respuesta:ops.findIndex(o=>o.valor===w.fr) }; }}
+];
+
+const BIOMA_FRANCES = {
+  id:'frances', nombre:'Village Français', icono:'🥐',
+  descripcion:'Descubre el francés palabra por palabra', color:'t-cielo', tono:'#3B6FD4',
+  niveles: p => p === 'chico' ? FRA_CHICO : FRA_GRANDE
+};
+
+/* ============================ biomes/laboratorio ============================ */
+/* Aquí no se pregunta primero: se experimenta. El niño mueve una palanca,
+   ve el fenómeno formarse y solo después se le pregunta. */
+
+/* --- utilidades de dibujo --- */
+function cielo(g, W, H, arriba, abajo){
+  const d = g.createLinearGradient(0,0,0,H);
+  d.addColorStop(0, arriba); d.addColorStop(1, abajo);
+  g.fillStyle = d; g.fillRect(0,0,W,H);
+}
+function bloqueP(g, x, y, an, al, color){
+  g.fillStyle = color; g.fillRect(x,y,an,al);
+  g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(x,y,an,3);
+  g.fillStyle = 'rgba(0,0,0,.20)'; g.fillRect(x,y+al-3,an,3);
+}
+function casita(g, x, sueloY, esc, inclina){
+  g.save(); g.translate(x, sueloY); g.rotate(inclina || 0);
+  bloqueP(g, -13*esc, -20*esc, 26*esc, 20*esc, '#C9A87C');
+  g.fillStyle = '#9B3B2E';
+  g.beginPath(); g.moveTo(-17*esc,-20*esc); g.lineTo(0,-32*esc); g.lineTo(17*esc,-20*esc); g.closePath(); g.fill();
+  g.fillStyle = '#4A6FA0'; g.fillRect(-5*esc,-14*esc,10*esc,9*esc);
+  g.restore();
+}
+function chispa(st, x, y, vx, vy, col, vida){
+  st.p.push({x,y,vx,vy,col,vida,max:vida});
+}
+function moverChispas(g, st, grav){
+  st.p = st.p.filter(q => q.vida > 0);
+  st.p.forEach(q=>{
+    q.x += q.vx; q.y += q.vy; q.vy += (grav == null ? 0.16 : grav); q.vida--;
+    g.globalAlpha = Math.max(0, q.vida / q.max);
+    g.fillStyle = q.col;
+    g.fillRect(q.x-2, q.y-2, 4, 4);
+  });
+  g.globalAlpha = 1;
+  if (st.p.length > 340) st.p.splice(0, st.p.length-340);
+}
+
+/* --- 1. VOLCÁN --- */
+function dibujaVolcan(g, W, H, v, t, st){
+  cielo(g, W, H, v >= 70 ? '#3A1E22' : '#22304C', '#5A6E96');
+  const sueloY = H-16, cx = W/2, alto = H*0.58, ancho = W*0.66, pasos = 9;
+  bloqueP(g, 0, sueloY, W, 16, '#4E7A33');
+  for (let i=0;i<pasos;i++){
+    const f = i/pasos, semi = (ancho/2)*(1-f*0.82);
+    const y = sueloY - (alto/pasos)*(i+1);
+    bloqueP(g, cx-semi, y, semi*2, alto/pasos+1, i%2 ? '#6B5540' : '#7A6149');
+  }
+  const llen = v/100;
+  /* cámara magmática */
+  g.fillStyle = `rgba(226,90,34,${0.30 + 0.70*llen})`;
+  g.beginPath();
+  g.ellipse(cx, sueloY-6, 30+30*llen, 12+12*llen, 0, 0, Math.PI*2);
+  g.fill();
+  /* chimenea que se va llenando */
+  const chAlto = alto*llen;
+  if (chAlto > 2){
+    g.fillStyle = '#F06A24';
+    g.fillRect(cx-7, sueloY-6-chAlto, 14, chAlto);
+    g.fillStyle = `rgba(255,220,120,${0.4+0.5*Math.sin(t/140)})`;
+    g.fillRect(cx-3, sueloY-6-chAlto, 6, chAlto);
+  }
+  if (v >= 70){
+    const fuerza = (v-70)/30;
+    for (let i=0;i<2+Math.round(fuerza*4);i++)
+      chispa(st, cx+(Math.random()-.5)*16, sueloY-alto,
+             (Math.random()-.5)*(2+fuerza*3), -(3+Math.random()*4+fuerza*3),
+             ['#FFD066','#F06A24','#D14B3C'][i%3], 60);
+    /* lava escurriendo */
+    g.fillStyle = '#E8622A';
+    const largo = alto*0.5*fuerza;
+    g.fillRect(cx-4, sueloY-alto, 8, largo);
+    /* columna de humo */
+    g.fillStyle = 'rgba(90,80,80,.45)';
+    for (let i=0;i<7;i++){
+      const y = sueloY-alto-14-i*15, r = 9+i*4+Math.sin(t/300+i)*3;
+      g.beginPath(); g.arc(cx+Math.sin(t/420+i)*12, y, r, 0, Math.PI*2); g.fill();
+    }
+  }
+  moverChispas(g, st);
+}
+
+/* --- 2. SISMO --- */
+function dibujaSismo(g, W, H, v, t, st){
+  const rompe = v >= 70;
+  const sacude = rompe ? Math.sin(t/22)*(v-70)/5 : 0;
+  g.save(); g.translate(sacude, 0);
+  cielo(g, W, H, '#22304C', '#6B7FA6');
+  const sueloY = H*0.52;
+  /* dos placas empujándose */
+  const empuje = v/100 * 16;
+  bloqueP(g, -20, sueloY, W/2+20-empuje, H-sueloY, '#7A6149');
+  bloqueP(g, -20, sueloY, W/2+20-empuje, 8, '#4E7A33');
+  bloqueP(g, W/2+empuje, sueloY + (rompe ? 8 : 0), W/2+20, H-sueloY, '#6B5540');
+  bloqueP(g, W/2+empuje, sueloY + (rompe ? 8 : 0), W/2+20, 8, '#4E7A33');
+  /* fricción en la falla */
+  g.fillStyle = rompe ? '#FFD066' : `rgba(220,90,50,${v/140})`;
+  g.fillRect(W/2-empuje-2, sueloY, 4+empuje*2, H-sueloY);
+  /* flechas de empuje */
+  g.fillStyle = 'rgba(255,255,255,.5)';
+  g.fillRect(W*0.18, sueloY+30, 26, 4); g.fillRect(W*0.18+26, sueloY+27, 4, 10);
+  g.fillRect(W*0.82-26, sueloY+30, 26, 4); g.fillRect(W*0.82-30, sueloY+27, 4, 10);
+  /* casas */
+  const tam = Math.min(1, W/300);
+  casita(g, W*0.22, sueloY, tam, rompe ? Math.sin(t/30)*0.10 : 0);
+  casita(g, W*0.74, sueloY+(rompe?8:0), tam, rompe ? Math.sin(t/30+1.6)*0.12 : 0);
+  /* ondas desde el epicentro */
+  if (rompe){
+    st.onda = (st.onda || 0) + 1.6;
+    if (st.onda > 90) st.onda = 0;
+    for (let k=0;k<3;k++){
+      const r = st.onda + k*30;
+      if (r > 90) continue;
+      g.strokeStyle = `rgba(255,208,102,${0.55*(1-r/90)})`;
+      g.lineWidth = 3;
+      g.beginPath(); g.arc(W/2, sueloY, r, Math.PI, Math.PI*2); g.stroke();
+    }
+    g.fillStyle = '#FFD066';
+    g.fillRect(W/2-4, sueloY-4, 8, 8);
+  }
+  g.restore();
+}
+
+/* --- 3. HURACÁN --- */
+function dibujaHuracan(g, W, H, v, t, st){
+  cielo(g, W, H, '#1B2B4C', '#3E5C86');
+  const marY = H*0.66;
+  const calor = Math.max(0, Math.min(1, (v-24)/8));
+  /* el mar cambia de color con la temperatura */
+  g.fillStyle = `rgb(${30+calor*55},${90+calor*40},${150-calor*35})`;
+  g.fillRect(0, marY, W, H-marY);
+  for (let i=0;i<W;i+=26){
+    g.fillStyle = 'rgba(255,255,255,.12)';
+    g.fillRect(i+Math.sin(t/300+i)*5, marY+8+Math.sin(t/220+i/30)*3, 16, 3);
+  }
+  /* vapor subiendo */
+  if (v >= 26 && Math.random() < 0.4)
+    chispa(st, Math.random()*W, marY, (Math.random()-.5), -0.7-Math.random(), 'rgba(255,255,255,.5)', 70);
+  moverChispas(g, st, -0.004);
+
+  if (v < 26){
+    g.fillStyle = 'rgba(230,235,245,.5)';
+    for (let i=0;i<3;i++) g.fillRect(W*0.15+i*W*0.26, H*0.22+i*10, 60, 14);
+    return;
+  }
+  /* espiral que crece con el calor */
+  const fuerza = (v-26)/6, cx = W/2, cy = marY*0.55;
+  const rMax = (Math.min(W,H)*0.30)*(0.45+0.55*fuerza);
+  const giro = t/(620-fuerza*340);
+  g.save(); g.translate(cx, cy); g.rotate(giro);
+  for (let b=0;b<5;b++){
+    g.save(); g.rotate(b*Math.PI*2/5);
+    for (let s=0;s<16;s++){
+      const f = s/16, r = rMax*(0.18+f*0.9), ang = f*2.3;
+      const x = Math.cos(ang)*r, y = Math.sin(ang)*r*0.62;
+      g.fillStyle = `rgba(238,243,252,${0.75-f*0.45})`;
+      const tam = 10*(1-f*0.55)*(0.6+0.4*fuerza);
+      g.fillRect(x-tam/2, y-tam/2, tam, tam);
+    }
+    g.restore();
+  }
+  g.restore();
+  /* el ojo aparece cuando el huracán ya está fuerte */
+  if (v >= 29){
+    g.fillStyle = '#20344F';
+    g.beginPath(); g.ellipse(cx, cy, rMax*0.16, rMax*0.10, 0, 0, Math.PI*2); g.fill();
+  }
+}
+
+/* --- 4. TORNADO --- */
+function dibujaTornado(g, W, H, v, t, st){
+  cielo(g, W, H, '#2A2438', '#7A6E86');
+  const sueloY = H-22;
+  bloqueP(g, 0, sueloY, W, 22, '#6E7A3E');
+  /* nube de tormenta */
+  g.fillStyle = '#3B3448';
+  g.fillRect(0, 0, W, H*0.26);
+  for (let i=0;i<W;i+=30){
+    g.beginPath(); g.arc(i+15, H*0.26, 20, 0, Math.PI); g.fill();
+  }
+  /* aire caliente sube, aire frío baja */
+  const mezcla = v/100;
+  for (let i=0;i<5;i++){
+    const x = W*0.10 + i*W*0.045;
+    g.fillStyle = `rgba(226,110,60,${0.25+0.55*mezcla})`;
+    const y = sueloY - 30 - ((t/9 + i*30) % 90);
+    g.fillRect(x, y, 5, 16);
+  }
+  for (let i=0;i<5;i++){
+    const x = W*0.78 + i*W*0.045;
+    g.fillStyle = `rgba(90,150,225,${0.25+0.55*mezcla})`;
+    const y = H*0.28 + ((t/9 + i*30) % 90);
+    g.fillRect(x, y, 5, 16);
+  }
+  if (v < 60){
+    casita(g, W/2, sueloY, Math.min(1, W/300), 0);
+    return;
+  }
+  /* embudo */
+  const fuerza = (v-60)/40, cx = W/2;
+  const arriba = H*0.26, abajo = sueloY;
+  const anchoA = 42*(0.5+0.5*fuerza), anchoB = 12*(0.5+0.5*fuerza);
+  for (let i=0;i<=22;i++){
+    const f = i/22;
+    const y = arriba + (abajo-arriba)*f;
+    const an = anchoA + (anchoB-anchoA)*f;
+    const bal = Math.sin(t/160 + f*4)*16*f*fuerza;
+    g.fillStyle = `rgba(200,196,212,${0.30+0.45*(1-f)})`;
+    g.fillRect(cx+bal-an/2, y, an, (abajo-arriba)/22+1);
+  }
+  /* escombros girando en la base */
+  if (Math.random() < 0.5)
+    chispa(st, cx+(Math.random()-.5)*40, abajo, (Math.random()-.5)*4, -1-Math.random()*3,
+           ['#8A7A5E','#6E7A3E','#C9A87C'][Math.floor(Math.random()*3)], 45);
+  moverChispas(g, st, 0.06);
+  casita(g, W*0.24, sueloY, Math.min(1, W/300), Math.sin(t/40)*0.06*fuerza);
+}
+
+/* --- 5. INUNDACIÓN --- */
+function dibujaInundacion(g, W, H, v, t, st, ciudad){
+  cielo(g, W, H, '#2E3A50', '#6B7A94');
+  const sueloY = H*0.62;
+  /* el suelo decide cuánta agua se absorbe */
+  if (ciudad){
+    bloqueP(g, 0, sueloY, W, H-sueloY, '#6B6E76');
+    for (let i=0;i<W;i+=34){ g.fillStyle='rgba(0,0,0,.13)'; g.fillRect(i,sueloY,2,H-sueloY); }
+  } else {
+    bloqueP(g, 0, sueloY, W, H-sueloY, '#7A5B38');
+    bloqueP(g, 0, sueloY, W, 9, '#4E7A33');
+    g.fillStyle = '#2F5E22';
+    [0.12,0.34,0.86].forEach(f=>{
+      g.fillRect(W*f-3, sueloY-22, 6, 22);
+      g.beginPath(); g.arc(W*f, sueloY-28, 13, 0, Math.PI*2); g.fill();
+    });
+  }
+  casita(g, W*0.62, sueloY, Math.min(1, W/300), 0);
+  /* lluvia */
+  const gotas = Math.round(v/2.2);
+  g.strokeStyle = 'rgba(170,205,245,.7)'; g.lineWidth = 2;
+  for (let i=0;i<gotas;i++){
+    const x = (i*79 + t/2.2) % W, y = ((i*137 + t*2.6) % (sueloY+30));
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x-2,y+9); g.stroke();
+  }
+  /* el agua sube: la tierra absorbe, el cemento no */
+  const absorcion = ciudad ? 0.12 : 0.62;
+  const nivel = Math.max(0, (v/100) * (1-absorcion) * (H-sueloY) * 2.4);
+  if (nivel > 1){
+    g.fillStyle = 'rgba(58,110,170,.72)';
+    g.fillRect(0, sueloY-nivel, W, nivel + (H-sueloY));
+    g.fillStyle = 'rgba(255,255,255,.22)';
+    for (let i=0;i<W;i+=22)
+      g.fillRect(i+Math.sin(t/240+i/26)*4, sueloY-nivel+Math.sin(t/180+i/30)*2, 13, 3);
+  }
+}
+
+/* --- Bancos de preguntas del laboratorio --- */
+const Q_VOLCAN_G = [
+  {t:'¿Qué sube por la chimenea del volcán?', r:'Magma', d:['Agua','Aire','Arena']},
+  {t:'¿Cómo se llama el magma cuando ya salió?', r:'Lava', d:['Ceniza','Roca','Humo']},
+  {t:'¿Qué hace que el volcán haga erupción?', r:'La presión del magma', d:['El viento','La lluvia','El frío']},
+  {t:'¿Dónde se guarda el magma antes de salir?', r:'En la cámara magmática', d:['En el cráter','En las nubes','En el mar']},
+  {t:'¿Qué más sale del volcán además de lava?', r:'Ceniza y gases', d:['Nieve','Agua dulce','Arena limpia']}
+];
+const Q_VOLCAN_C = [
+  {t:'¿Qué sale del volcán?', r:'Lava', d:['Nieve','Leche']},
+  {t:'¿La lava está caliente o fría?', r:'Muy caliente', d:['Fría','Congelada']},
+  {t:'¿De qué color se ve la lava?', r:'Roja y naranja', d:['Azul','Verde']},
+  {t:'¿El volcán es una montaña?', r:'Sí, una montaña especial', d:['No, es un río','No, es una nube']}
+];
+const Q_SISMO_G = [
+  {t:'¿Qué se mueve para causar un sismo?', r:'Las placas de la Tierra', d:['Las nubes','El mar','El viento']},
+  {t:'¿Cómo se llama el punto donde empieza?', r:'Epicentro', d:['Cráter','Cima','Orilla']},
+  {t:'¿Cómo viaja la energía de un sismo?', r:'En ondas', d:['En gotas','En rayos','En burbujas']},
+  {t:'Durante un sismo, ¿qué es lo más seguro?', r:'Agacharse y cubrirse', d:['Usar el elevador','Asomarse a la ventana','Correr por las escaleras']},
+  {t:'¿Qué aparato mide los sismos?', r:'El sismógrafo', d:['El termómetro','La brújula','El reloj']}
+];
+const Q_SISMO_C = [
+  {t:'En un sismo, ¿qué hace la tierra?', r:'Se mueve y tiembla', d:['Se pone azul','Se calienta']},
+  {t:'Si tiembla, ¿qué debo hacer?', r:'Agacharme y cubrirme', d:['Correr solo','Saltar']},
+  {t:'¿Con quién debo estar si tiembla?', r:'Con un adulto', d:['Solo','Con nadie']},
+  {t:'¿Las casas se mueven en un sismo?', r:'Sí, se sacuden', d:['No, vuelan','No, se derriten']}
+];
+const Q_HURACAN_G = [
+  {t:'¿Qué necesita un huracán para formarse?', r:'Mar caliente', d:['Mar frío','Nieve','Desierto']},
+  {t:'¿Cómo se llama el centro del huracán?', r:'El ojo', d:['La cola','El pico','La raíz']},
+  {t:'¿Qué pasa dentro del ojo del huracán?', r:'Está calmado', d:['Es lo más fuerte','Cae granizo','Hay fuego']},
+  {t:'¿Qué trae un huracán?', r:'Viento y mucha lluvia', d:['Nieve y hielo','Arena y polvo','Fuego']},
+  {t:'¿Dónde se debilita un huracán?', r:'Sobre la tierra', d:['Sobre el mar caliente','En el aire','De noche']}
+];
+const Q_HURACAN_C = [
+  {t:'¿El huracán necesita agua fría o caliente?', r:'Caliente', d:['Fría','Congelada']},
+  {t:'¿Qué trae el huracán?', r:'Mucho viento y lluvia', d:['Mucha nieve','Mucho sol']},
+  {t:'¿Qué forma tiene un huracán?', r:'Redonda, como remolino', d:['Cuadrada','De triángulo']},
+  {t:'Si hay huracán, ¿dónde me quedo?', r:'Adentro de la casa', d:['En la calle','En el árbol']}
+];
+const Q_TORNADO_G = [
+  {t:'¿Qué forma un tornado?', r:'Aire caliente y aire frío que chocan', d:['Dos ríos','Dos montañas','La luna']},
+  {t:'¿Qué forma tiene un tornado?', r:'De embudo', d:['De cuadrado','De pelota','De línea recta']},
+  {t:'¿Dónde es más seguro estar?', r:'En el lugar más bajo y sin ventanas', d:['En el techo','Junto a la ventana','En el patio']},
+  {t:'¿Un tornado es más grande que un huracán?', r:'No, es mucho más chico', d:['Sí, es más grande','Son iguales','Nadie sabe']},
+  {t:'¿De dónde baja el tornado?', r:'De una nube de tormenta', d:['Del suelo','Del mar','De la luna']}
+];
+const Q_TORNADO_C = [
+  {t:'¿Qué forma tiene el tornado?', r:'De embudo que gira', d:['De cuadrado','De pelota']},
+  {t:'¿El tornado gira o está quieto?', r:'Gira muy rápido', d:['Está quieto','Camina despacio']},
+  {t:'Si hay tornado, ¿a dónde voy?', r:'Al lugar más bajo de la casa', d:['Al techo','Al patio']},
+  {t:'¿De dónde baja el tornado?', r:'De la nube', d:['Del suelo','Del mar']}
+];
+const Q_INUNDA_G = [
+  {t:'¿Qué causa una inundación?', r:'Mucha lluvia en poco tiempo', d:['Mucho sol','Mucho viento','Mucho frío']},
+  {t:'¿Dónde se absorbe mejor el agua?', r:'En la tierra y el pasto', d:['En el cemento','En el asfalto','En los techos']},
+  {t:'¿Por qué la ciudad se inunda más?', r:'El agua no puede entrar al suelo', d:['Llueve más ahí','Hace más calor','Hay más árboles']},
+  {t:'Si hay inundación, ¿qué hago?', r:'Subir a un lugar alto', d:['Nadar en la calle','Bajar al sótano','Salir en bici']},
+  {t:'¿Qué ayuda a evitar inundaciones?', r:'Los árboles y no tirar basura', d:['Más cemento','Menos drenaje','Más coches']}
+];
+const Q_INUNDA_C = [
+  {t:'¿Qué pasa si llueve muchísimo?', r:'El agua se junta y sube', d:['Se hace nieve','Se hace fuego']},
+  {t:'¿Dónde se mete mejor el agua?', r:'En la tierra', d:['En el cemento','En el techo']},
+  {t:'Si hay mucha agua, ¿a dónde subo?', r:'A un lugar alto', d:['Al sótano','A la calle']},
+  {t:'¿Debo jugar en el agua de la calle?', r:'No, es peligroso', d:['Sí, es divertido','Sí, si hay poca']}
+];
+
+const FENOMENOS = [
+  { id:1, nombre:'Volcán', icono:'🌋', tono:'#D14B3C',
+    resumen:'Sube la presión del magma y mira qué pasa',
+    control:{etiqueta:'Presión del magma', min:0, max:100, inicio:20, unidad:'%'},
+    umbral:70, dibuja:dibujaVolcan, qG:Q_VOLCAN_G, qC:Q_VOLCAN_C,
+    estados:[
+      {hasta:39, txt:'El magma está tranquilo allá abajo.', alerta:false},
+      {hasta:69, txt:'La presión sube y el volcán se hincha.', alerta:false},
+      {hasta:100, txt:'¡ERUPCIÓN! La lava sale por el cráter.', alerta:true}
+    ],
+    explica:{
+      grande:'Debajo del volcán hay una <b>cámara magmática</b>: una bolsa gigante de roca derretida. Los gases atrapados ahí empujan hacia arriba. Cuando la presión es más fuerte que la roca que la tapa, el magma sube por la <b>chimenea</b> y sale por el cráter. Ya afuera deja de llamarse magma y se llama <b>lava</b>.',
+      chico:'Abajo del volcán hay roca <b>derretida y muy caliente</b>. Cuando empuja mucho, sale por arriba. A eso le decimos <b>lava</b>.'
+    }},
+
+  { id:2, nombre:'Sismo', icono:'🏚️', tono:'#F0B02E',
+    resumen:'Empuja las placas hasta que la tierra se rompe',
+    control:{etiqueta:'Tensión entre placas', min:0, max:100, inicio:15, unidad:'%'},
+    umbral:70, dibuja:dibujaSismo, qG:Q_SISMO_G, qC:Q_SISMO_C,
+    estados:[
+      {hasta:39, txt:'Las placas se empujan muy despacio.', alerta:false},
+      {hasta:69, txt:'La roca se dobla y guarda energía.', alerta:false},
+      {hasta:100, txt:'¡SISMO! La roca se rompe y libera la energía.', alerta:true}
+    ],
+    explica:{
+      grande:'La capa de afuera de la Tierra está partida en <b>placas</b> enormes que se empujan sin parar. Donde se rozan, la roca se atora y se va doblando como un resorte. Cuando ya no aguanta, se rompe de golpe y suelta toda la energía en <b>ondas</b>. El punto donde empieza es el <b>epicentro</b>.',
+      chico:'La Tierra está hecha de <b>pedazos grandes</b> que se empujan. Cuando se resbalan de golpe, todo <b>tiembla</b>. Si tiembla: agáchate, cúbrete y quédate con un adulto.'
+    }},
+
+  { id:3, nombre:'Huracán', icono:'🌀', tono:'#3FCFCB',
+    resumen:'Calienta el mar y mira nacer la espiral',
+    control:{etiqueta:'Temperatura del mar', min:20, max:32, inicio:22, unidad:'°C'},
+    umbral:26, dibuja:dibujaHuracan, qG:Q_HURACAN_G, qC:Q_HURACAN_C,
+    estados:[
+      {hasta:25, txt:'El mar está frío. No se forma nada.', alerta:false},
+      {hasta:28, txt:'El agua caliente se evapora y las nubes empiezan a girar.', alerta:false},
+      {hasta:99, txt:'¡HURACÁN! Ya se ve el ojo en el centro.', alerta:true}
+    ],
+    explica:{
+      grande:'Un huracán solo nace si el mar está a <b>26 °C o más</b>. El agua caliente se evapora, sube y forma nubes enormes. Como la Tierra gira, todo ese aire empieza a dar vueltas. Entre más caliente el mar, más fuerte gira. En el centro queda <b>el ojo</b>, que curiosamente es la parte más calmada.',
+      chico:'El huracán necesita <b>agua caliente</b> del mar. El agua sube, hace nubes y todo empieza a <b>girar</b>. Trae mucho viento y mucha lluvia.'
+    }},
+
+  { id:4, nombre:'Tornado', icono:'🌪️', tono:'#8B6BD9',
+    resumen:'Choca aire caliente con aire frío',
+    control:{etiqueta:'Choque de aires', min:0, max:100, inicio:20, unidad:'%'},
+    umbral:60, dibuja:dibujaTornado, qG:Q_TORNADO_G, qC:Q_TORNADO_C,
+    estados:[
+      {hasta:39, txt:'El aire caliente sube y el frío baja, sin chocar.', alerta:false},
+      {hasta:59, txt:'Los aires se encuentran y el viento empieza a girar.', alerta:false},
+      {hasta:100, txt:'¡TORNADO! El embudo bajó hasta el suelo.', alerta:true}
+    ],
+    explica:{
+      grande:'Cuando el aire <b>caliente y húmedo</b> de abajo choca con aire <b>frío y seco</b> de arriba, se forma una tormenta muy alta. Si además el viento sopla en direcciones distintas según la altura, todo empieza a girar y baja un <b>embudo</b> hasta tocar el suelo. Es mucho más chico que un huracán, pero gira más rápido.',
+      chico:'Cuando el aire <b>caliente</b> y el aire <b>frío</b> se topan, el viento empieza a girar y baja como un <b>embudo</b>. Gira muy, muy rápido.'
+    }},
+
+  { id:5, nombre:'Inundación', icono:'🌊', tono:'#3B6FD4',
+    resumen:'Compara qué pasa en el campo y en la ciudad',
+    control:{etiqueta:'Cantidad de lluvia', min:0, max:100, inicio:30, unidad:'%'},
+    alterno:{etiqueta:'Suelo', off:'🌳 Campo', on:'🏙️ Ciudad'},
+    umbral:65, dibuja:dibujaInundacion, qG:Q_INUNDA_G, qC:Q_INUNDA_C,
+    estados:[
+      {hasta:39, txt:'Llueve poco. El suelo va absorbiendo el agua.', alerta:false},
+      {hasta:64, txt:'El agua se acumula más rápido de lo que se absorbe.', alerta:false},
+      {hasta:100, txt:'¡INUNDACIÓN! El agua ya no cabe en el suelo.', alerta:true}
+    ],
+    explica:{
+      grande:'La lluvia se inunda cuando cae <b>más agua de la que el suelo puede tragar</b>. La tierra y el pasto absorben mucha; el cemento y el asfalto casi nada. Por eso en la ciudad se inunda con menos lluvia que en el campo. Prueba el interruptor de suelo con la misma lluvia y compara.',
+      chico:'Si llueve mucho, el agua <b>no cabe</b> en el suelo y se junta en las calles. En la tierra se mete mejor que en el cemento. Si hay agua, hay que <b>subir a un lugar alto</b>.'
+    }}
+];
+
+function nivelFenomeno(f, edad){
+  const banco = edad === 'chico' ? f.qC : f.qG;
+  return Object.assign({}, f, {
+    preguntas: Math.min(3, banco.length),
+    gen(){ return deBanco(banco); }
+  });
+}
+
+const BIOMA_LAB = {
+  id:'laboratorio', nombre:'Laboratorio de la Tierra', icono:'🔬',
+  descripcion:'Experimenta cómo nacen los fenómenos naturales',
+  color:'t-tierra', tono:'#8B5A2B', especial:true,
+  niveles: edad => FENOMENOS.map(f => nivelFenomeno(f, edad))
+};
+
+/* ============================ biomes/cosmos ============================ */
+function fondoEstelar(g, W, H, st, t){
+  g.fillStyle = '#070B16'; g.fillRect(0,0,W,H);
+  if (!st.estrellas){
+    st.estrellas = [];
+    for (let i=0;i<80;i++)
+      st.estrellas.push({x:Math.random(), y:Math.random(), r:Math.random()*1.5+0.6, f:Math.random()*6});
+  }
+  st.estrellas.forEach(e=>{
+    g.globalAlpha = 0.30 + 0.70*Math.abs(Math.sin(e.f + t/900));
+    g.fillStyle = '#FFFFFF';
+    g.fillRect(e.x*W, e.y*H, e.r*1.7, e.r*1.7);
+  });
+  g.globalAlpha = 1;
+}
+function disco(g, x, y, r, color){
+  g.fillStyle = color; g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+}
+function astroSol(g, x, y, r, t){
+  const d = g.createRadialGradient(x,y,r*0.2,x,y,r*2.4);
+  d.addColorStop(0,'rgba(255,240,190,.95)');
+  d.addColorStop(0.35,'rgba(255,190,60,.45)');
+  d.addColorStop(1,'rgba(255,150,40,0)');
+  g.fillStyle = d; g.beginPath(); g.arc(x,y,r*2.4,0,Math.PI*2); g.fill();
+  disco(g, x, y, r*(1+0.03*Math.sin(t/420)), '#FFD066');
+}
+
+/* --- 1. ORBITAS Y GRAVEDAD --- */
+function dibujaOrbita(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const cx = W/2, cy = H/2, r0 = Math.min(W,H)*0.31;
+  const reg = v < 30 ? 'cae' : v > 70 ? 'escapa' : 'orbita';
+  if (st.r == null || st.reg !== reg){ st.r = r0; st.ang = 0; st.rastro = []; st.reg = reg; }
+  if (reg === 'cae'){
+    st.r -= (30-v)*0.012 + 0.05;
+    if (st.r < 15){ st.r = r0; st.rastro = []; }
+  } else if (reg === 'escapa'){
+    st.r += (v-70)*0.05 + 0.2;
+    if (st.r > Math.max(W,H)){ st.r = r0; st.rastro = []; }
+  } else {
+    const e = (v-50)/22;
+    st.r = r0*(1 + 0.20*e*Math.sin(st.ang));
+  }
+  st.ang += 0.020*Math.pow(r0/Math.max(st.r,12), 1.5);
+  const px = cx + Math.cos(st.ang)*st.r, py = cy + Math.sin(st.ang)*st.r*0.86;
+  st.rastro.push({x:px, y:py});
+  if (st.rastro.length > 110) st.rastro.shift();
+  st.rastro.forEach((q,i)=>{
+    g.globalAlpha = i/st.rastro.length*0.55;
+    g.fillStyle = '#7FB4FF'; g.fillRect(q.x-1.5, q.y-1.5, 3, 3);
+  });
+  g.globalAlpha = 1;
+  astroSol(g, cx, cy, Math.min(W,H)*0.075, t);
+  disco(g, px, py, 7, '#5B9BEE');
+  disco(g, px-2, py-2, 3, '#A9CCFF');
+}
+
+/* --- 2. FASES DE LA LUNA --- */
+function caraLunar(g, cx, cy, r, k, derecha){
+  disco(g, cx, cy, r, '#2B2F3C');
+  g.save();
+  g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.clip();
+  g.fillStyle = '#EDE7D6';
+  g.beginPath();
+  if (derecha) g.arc(cx,cy,r,-Math.PI/2,Math.PI/2);
+  else g.arc(cx,cy,r,Math.PI/2,Math.PI*1.5);
+  g.closePath(); g.fill();
+  g.fillStyle = k > 0 ? '#EDE7D6' : '#2B2F3C';
+  g.beginPath(); g.ellipse(cx,cy,Math.abs(k)*r,r,0,0,Math.PI*2); g.fill();
+  g.restore();
+  g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1;
+  g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke();
+}
+function dibujaFases(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const ang = v*Math.PI/180;
+  const cx = W*0.31, cy = H/2, R = Math.min(W*0.20, H*0.33);
+  g.fillStyle = 'rgba(255,214,110,.45)';
+  for (let i=0;i<6;i++) g.fillRect(0, H*0.12+i*H*0.145, W*0.09, 3);
+  g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1;
+  g.beginPath(); g.ellipse(cx,cy,R,R*0.86,0,0,Math.PI*2); g.stroke();
+  disco(g, cx, cy, 11, '#3B6FD4');
+  disco(g, cx-3, cy-3, 4, '#7FB4FF');
+  const mx = cx + Math.cos(ang)*R, my = cy + Math.sin(ang)*R*0.86;
+  disco(g, mx, my, 7, '#2B2F3C');
+  g.save(); g.beginPath(); g.arc(mx,my,7,0,Math.PI*2); g.clip();
+  g.fillStyle = '#EDE7D6'; g.fillRect(mx-7, my-7, 7, 14);
+  g.restore();
+  g.fillStyle = 'rgba(255,255,255,.10)'; g.fillRect(W*0.56, H*0.12, 2, H*0.70);
+  const vr = Math.min(W*0.13, H*0.27);
+  caraLunar(g, W*0.78, H*0.46, vr, Math.cos(ang), Math.sin(ang) >= 0);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '11px sans-serif'; g.textAlign = 'center';
+  g.fillText('desde arriba', cx, H-8);
+  g.fillText('desde la Tierra', W*0.78, H-8);
+  g.textAlign = 'left';
+}
+
+/* --- 3. ECLIPSE SOLAR --- */
+function dibujaEclipse(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const solX = W*0.13, solY = H/2, solR = Math.min(W,H)*0.10;
+  const lunaX = W*0.50, lunaY = H/2 + v*H*0.0032, lunaR = 9;
+  const tieX = W*0.84, tieY = H/2, tieR = Math.min(W,H)*0.13;
+  astroSol(g, solX, solY, solR, t);
+  g.fillStyle = 'rgba(10,14,26,.72)';
+  g.beginPath();
+  g.moveTo(lunaX, lunaY-lunaR); g.lineTo(lunaX, lunaY+lunaR);
+  g.lineTo(W, lunaY + (lunaY-solY)*1.9 + lunaR*0.4);
+  g.lineTo(W, lunaY + (lunaY-solY)*1.9 - lunaR*0.4);
+  g.closePath(); g.fill();
+  disco(g, tieX, tieY, tieR, '#3B6FD4');
+  g.save(); g.beginPath(); g.arc(tieX,tieY,tieR,0,Math.PI*2); g.clip();
+  g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(tieX-tieR, tieY-tieR, tieR, tieR*2);
+  if (Math.abs(v) < 13){
+    g.fillStyle = 'rgba(6,8,16,.88)';
+    g.beginPath(); g.arc(tieX-tieR*0.4, tieY+v*0.30, tieR*0.30, 0, Math.PI*2); g.fill();
+  }
+  g.restore();
+  disco(g, lunaX, lunaY, lunaR, '#8A8D99');
+  const br = Math.min(W,H)*0.085, bx = W-br-14, by = br+14;
+  g.fillStyle = 'rgba(8,12,24,.85)';
+  g.fillRect(bx-br-6, by-br-6, br*2+12, br*2+12);
+  disco(g, bx, by, br, '#FFD066');
+  disco(g, bx + v*0.028*br, by + v*0.030*br, br*0.96, '#1B1F2C');
+  g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1;
+  g.strokeRect(bx-br-6, by-br-6, br*2+12, br*2+12);
+}
+
+/* --- 4. VIDA DE UNA ESTRELLA --- */
+function dibujaEstrella(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const y = H*0.44;
+  const rBase = 10 + Math.log(v)*6;
+  const col = v < 3 ? '#FFD066' : v < 9 ? '#FFF0C2' : '#BFD8FF';
+  g.font = '11px sans-serif'; g.textAlign = 'center';
+  disco(g, W*0.17, y, rBase*(1+0.04*Math.sin(t/380)), col);
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  g.fillText('hoy', W*0.17, y + rBase + 20);
+  g.fillStyle = 'rgba(255,255,255,.35)';
+  g.fillRect(W*0.30, y-2, W*0.06, 4);
+  g.fillRect(W*0.62, y-2, W*0.06, 4);
+  if (v < 9){
+    disco(g, W*0.49, y, rBase*2.1, '#E0563C');
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.fillText('gigante roja', W*0.49, y + rBase*2.1 + 18);
+  } else {
+    const brillo = 0.55 + 0.45*Math.abs(Math.sin(t/260));
+    const d = g.createRadialGradient(W*0.49,y,2,W*0.49,y,rBase*2.5);
+    d.addColorStop(0, 'rgba(255,255,255,' + brillo + ')');
+    d.addColorStop(0.4, 'rgba(255,200,120,.6)');
+    d.addColorStop(1, 'rgba(255,90,40,0)');
+    g.fillStyle = d;
+    g.beginPath(); g.arc(W*0.49, y, rBase*2.5, 0, Math.PI*2); g.fill();
+    if (Math.random() < 0.3)
+      chispa(st, W*0.49, y, (Math.random()-.5)*5, (Math.random()-.5)*5, '#FFD066', 40);
+    g.fillStyle = 'rgba(255,255,255,.6)';
+    g.fillText('supernova', W*0.49, y + rBase*2.5 + 18);
+  }
+  if (v < 9){
+    disco(g, W*0.82, y, 7, '#E8F0FF');
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.fillText('enana blanca', W*0.82, y + 26);
+  } else if (v < 21){
+    disco(g, W*0.82, y, 5, '#CFE2FF');
+    g.strokeStyle = 'rgba(140,200,255,.6)'; g.lineWidth = 2;
+    g.beginPath(); g.arc(W*0.82, y, 11+Math.sin(t/200)*2, 0, Math.PI*2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.fillText('estrella de neutrones', W*0.82, y + 28);
+  } else {
+    disco(g, W*0.82, y, 13, '#05070E');
+    g.strokeStyle = '#FFB347'; g.lineWidth = 2;
+    g.beginPath(); g.arc(W*0.82, y, 15, 0, Math.PI*2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.fillText('agujero negro', W*0.82, y + 32);
+  }
+  moverChispas(g, st, 0);
+  g.textAlign = 'left';
+}
+
+/* --- 5. AGUJERO NEGRO --- */
+function dibujaAgujero(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const cx = W/2, cy = H/2;
+  const rh = 8 + v*0.42;
+  const rFoton = rh*1.5;
+  for (let i=0;i<52;i++){
+    const a = (i/52)*Math.PI*2 + t/700;
+    const rr = rFoton*1.5 + (i%7)*rh*0.20;
+    const x = cx + Math.cos(a)*rr, y = cy + Math.sin(a)*rr*0.28;
+    const cal = (Math.sin(a)+1)/2;
+    g.fillStyle = 'rgba(255,' + Math.round(140+cal*90) + ',' + Math.round(40+cal*70) + ',' + (0.35+0.45*cal) + ')';
+    g.fillRect(x-2, y-2, 4.5, 4.5);
+  }
+  for (let i=0;i<7;i++){
+    const b = (i-3)*rh*0.85;
+    const tragado = Math.abs(b) < rFoton;
+    g.strokeStyle = tragado ? 'rgba(255,120,80,.55)' : 'rgba(180,215,255,.55)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(W, cy + b);
+    if (tragado) g.quadraticCurveTo(cx + rh*2, cy + b, cx + rh*0.2, cy + b*0.25);
+    else g.quadraticCurveTo(cx, cy + b*0.35, 0, cy + b*1.9);
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,196,110,.85)'; g.lineWidth = 3;
+  g.beginPath(); g.arc(cx, cy, rFoton, 0, Math.PI*2); g.stroke();
+  disco(g, cx, cy, rh, '#04060C');
+  g.fillStyle = 'rgba(255,255,255,.5)'; g.font = '11px sans-serif'; g.textAlign = 'center';
+  g.fillText('horizonte de sucesos', cx, cy + rFoton + 22);
+  g.textAlign = 'left';
+}
+
+/* --- 6. LAS ESTACIONES --- */
+function tierraInclinada(g, cx, cy, r, incl, ladoSol, etiqueta){
+  const a = incl*Math.PI/180;
+  disco(g, cx, cy, r, '#22375C');
+  g.save(); g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.clip();
+  g.fillStyle = '#4E86D6';
+  g.fillRect(ladoSol < 0 ? cx-r : cx, cy-r, r, r*2);
+  g.restore();
+  g.strokeStyle = '#FFD066'; g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - Math.sin(a)*r*1.35, cy - Math.cos(a)*r*1.35);
+  g.lineTo(cx + Math.sin(a)*r*1.35, cy + Math.cos(a)*r*1.35);
+  g.stroke();
+  disco(g, cx - Math.sin(a)*r*1.35, cy - Math.cos(a)*r*1.35, 3.5, '#FFF3C4');
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '11px sans-serif'; g.textAlign = 'center';
+  g.fillText(etiqueta, cx, cy + r + 20);
+  g.textAlign = 'left';
+}
+function dibujaEstaciones(g, W, H, v, t, st){
+  fondoEstelar(g, W, H, st, t);
+  const cy = H*0.44, r = Math.min(W*0.085, H*0.17);
+  astroSol(g, W/2, cy, Math.min(W,H)*0.072, t);
+  tierraInclinada(g, W*0.16, cy, r, -v, +1, 'junio');
+  tierraInclinada(g, W*0.84, cy, r, -v, -1, 'diciembre');
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '11px sans-serif'; g.textAlign = 'center';
+  const norte = v < 4 ? ['igual','igual'] : ['verano','invierno'];
+  g.fillText('Norte: ' + norte[0], W*0.16, cy + r + 36);
+  g.fillText('Norte: ' + norte[1], W*0.84, cy + r + 36);
+  if (Math.abs(v-23) < 2){
+    g.fillStyle = '#FFD066';
+    g.fillText('asi es la Tierra de verdad', W/2, H-10);
+  }
+  g.textAlign = 'left';
+}
+
+/* --- Bancos de preguntas del cosmos --- */
+const Q_ORB_G = [
+  {t:'¿Qué mantiene a los planetas dando vueltas al Sol?', r:'La gravedad', d:['El viento','Un hilo','El magnetismo']},
+  {t:'Si un planeta va muy lento, ¿qué le pasa?', r:'Cae hacia el Sol', d:['Se queda quieto','Se aleja','Explota']},
+  {t:'Si va demasiado rápido, ¿qué le pasa?', r:'Escapa al espacio', d:['Cae al Sol','Se detiene','Se hace más grande']},
+  {t:'¿Por qué la Luna no se cae a la Tierra?', r:'Porque se mueve de lado mientras cae', d:['Porque no pesa','Porque está muy lejos','Porque flota']},
+  {t:'¿Qué forma tiene la órbita de la Tierra?', r:'Casi un círculo, un poco ovalada', d:['Un cuadrado','Una línea recta','Un triángulo']}
+];
+const Q_ORB_C = [
+  {t:'¿Qué da vueltas alrededor del Sol?', r:'Los planetas', d:['Las casas','Los árboles']},
+  {t:'¿La Tierra está quieta?', r:'No, siempre da vueltas', d:['Sí, no se mueve','Solo de noche']},
+  {t:'¿Qué gira alrededor de la Tierra?', r:'La Luna', d:['El Sol','Las nubes']},
+  {t:'¿La gravedad jala o empuja?', r:'Jala', d:['Empuja','No hace nada']}
+];
+const Q_LUNA_G = [
+  {t:'¿Por qué la Luna cambia de forma?', r:'Vemos distinta parte de su lado iluminado', d:['Porque la Tierra le hace sombra','Porque se encoge','Porque hay nubes']},
+  {t:'¿Cuánta Luna ilumina el Sol siempre?', r:'La mitad', d:['Toda','Nada','Un cuarto']},
+  {t:'¿Cómo se llama cuando no vemos nada de la Luna?', r:'Luna nueva', d:['Luna llena','Cuarto creciente','Eclipse']},
+  {t:'En luna llena, ¿dónde está la Luna?', r:'Del lado opuesto al Sol', d:['Entre el Sol y la Tierra','Dentro del Sol','Detrás de Marte']},
+  {t:'¿Cuánto tarda la Luna en dar toda la vuelta?', r:'Como un mes', d:['Un día','Un año','Diez años']}
+];
+const Q_LUNA_C = [
+  {t:'¿La Luna cambia de forma de verdad?', r:'No, solo se ve distinta', d:['Sí, se encoge','Sí, se parte']},
+  {t:'¿Quién ilumina a la Luna?', r:'El Sol', d:['Una lámpara','La Tierra']},
+  {t:'¿Cómo se llama la Luna toda redonda?', r:'Luna llena', d:['Luna nueva','Luna cuadrada']},
+  {t:'¿La Luna da vueltas a la Tierra?', r:'Sí', d:['No','Solo en verano']}
+];
+const Q_ECL_G = [
+  {t:'En un eclipse solar, ¿qué tapa al Sol?', r:'La Luna', d:['La Tierra','Una nube','Marte']},
+  {t:'¿Por qué no hay eclipse cada mes?', r:'La órbita de la Luna está inclinada', d:['La Luna se cansa','El Sol se mueve','Solo pasa en invierno']},
+  {t:'¿En qué fase ocurre un eclipse solar?', r:'En luna nueva', d:['En luna llena','En cuarto creciente','En cualquiera']},
+  {t:'¿Se puede ver un eclipse solar sin protección?', r:'No, daña los ojos', d:['Sí, sin problema','Solo con lentes de sol','Solo si es corto']},
+  {t:'En un eclipse lunar, ¿quién hace la sombra?', r:'La Tierra', d:['La Luna','El Sol','Júpiter']}
+];
+const Q_ECL_C = [
+  {t:'En un eclipse de Sol, ¿qué lo tapa?', r:'La Luna', d:['Una nube','Un pájaro']},
+  {t:'¿Puedo ver el eclipse sin protección?', r:'No, nunca', d:['Sí','Solo un ratito']},
+  {t:'¿Qué pasa cuando hay eclipse de Sol?', r:'Se hace de noche un rato', d:['Hace más calor','Llueve']},
+  {t:'¿Los eclipses pasan todos los días?', r:'No, casi nunca', d:['Sí, diario','Sí, cada noche']}
+];
+const Q_EST_G = [
+  {t:'¿Qué decide el final de una estrella?', r:'Su masa', d:['Su color','Su edad','Su distancia']},
+  {t:'¿Qué le va a pasar al Sol al final?', r:'Será gigante roja y luego enana blanca', d:['Explotará en supernova','Será agujero negro','Se apagará hoy']},
+  {t:'¿Qué queda después de una supernova muy grande?', r:'Un agujero negro', d:['Un planeta','Una luna','Nada']},
+  {t:'¿Cómo se llama la explosión de una estrella gigante?', r:'Supernova', d:['Eclipse','Cometa','Aurora']},
+  {t:'¿Las estrellas duran para siempre?', r:'No, nacen y mueren', d:['Sí, siempre','Solo un año','Solo de noche']}
+];
+const Q_EST_C = [
+  {t:'¿Las estrellas se acaban algún día?', r:'Sí, después de muchísimo tiempo', d:['No, nunca','Sí, mañana']},
+  {t:'¿El Sol es una estrella?', r:'Sí', d:['No, es un planeta','No, es una luna']},
+  {t:'¿Las estrellas grandes explotan?', r:'Sí, hacen una explosión enorme', d:['No, se apagan','No, se van']},
+  {t:'¿De qué color se ven las estrellas más calientes?', r:'Azules', d:['Cafés','Negras']}
+];
+const Q_AGU_G = [
+  {t:'¿Qué es el horizonte de sucesos?', r:'El punto de no retorno', d:['Una estrella','Un planeta','Una nube de gas']},
+  {t:'¿Qué le pasa a la luz que entra?', r:'Ya no puede salir', d:['Rebota','Se hace más rápida','Cambia de color']},
+  {t:'Si el Sol se volviera agujero negro con la misma masa, ¿qué pasaría?', r:'La Tierra seguiría orbitando igual', d:['La Tierra sería tragada','La Tierra saldría volando','El Sol crecería']},
+  {t:'¿De dónde nacen los agujeros negros?', r:'De estrellas muy grandes que mueren', d:['De planetas','De cometas','De la Luna']},
+  {t:'¿Por qué se ve negro?', r:'Porque no deja escapar la luz', d:['Porque está pintado','Porque está apagado','Porque está muy lejos']}
+];
+const Q_AGU_C = [
+  {t:'¿De qué color se ve un agujero negro?', r:'Negro', d:['Rojo','Blanco']},
+  {t:'¿La luz puede salir de un agujero negro?', r:'No', d:['Sí','A veces']},
+  {t:'¿Los agujeros negros se tragan todo el universo?', r:'No, solo lo que se acerca mucho', d:['Sí, todo','Sí, cada noche']},
+  {t:'¿De dónde salen los agujeros negros?', r:'De estrellas muy grandes', d:['De la Luna','De los cometas']}
+];
+const Q_ESA_G = [
+  {t:'¿Por qué hay estaciones del año?', r:'Porque el eje de la Tierra está inclinado', d:['Porque la Tierra se acerca al Sol','Porque el Sol se apaga','Porque la Luna tapa el Sol']},
+  {t:'Si el eje no estuviera inclinado, ¿qué pasaría?', r:'No habría estaciones', d:['Sería siempre invierno','El día duraría un año','Nada cambiaría']},
+  {t:'Cuando es verano en México, ¿qué hay en Argentina?', r:'Invierno', d:['También verano','Primavera','Nada']},
+  {t:'¿Cuánto está inclinado el eje de la Tierra?', r:'Unos 23 grados', d:['90 grados','0 grados','60 grados']},
+  {t:'En verano, ¿por qué hace más calor?', r:'Los rayos llegan más directos', d:['La Tierra está más cerca del Sol','El Sol es más grande','Hay menos nubes']}
+];
+const Q_ESA_C = [
+  {t:'¿Cuántas estaciones hay en el año?', r:'Cuatro', d:['Dos','Diez']},
+  {t:'¿En qué estación hace más calor?', r:'En verano', d:['En invierno','En otoño']},
+  {t:'¿La Tierra está derechita o inclinada?', r:'Inclinada', d:['Derechita','De cabeza']},
+  {t:'¿En invierno hace frío o calor?', r:'Frío', d:['Calor','Igual']}
+];
+
+const ASTROS = [
+  { id:1, nombre:'Órbitas', icono:'🪐', tono:'#5B9BEE',
+    resumen:'Cambia la velocidad y mira si orbita, cae o escapa',
+    control:{etiqueta:'Velocidad del planeta', min:0, max:100, inicio:50, unidad:'%'},
+    dibuja:dibujaOrbita, qG:Q_ORB_G, qC:Q_ORB_C,
+    estados:[
+      {hasta:29, txt:'Va muy lento: la gravedad lo hace caer al Sol.', alerta:true},
+      {hasta:70, txt:'Velocidad justa: se queda en órbita.', alerta:false},
+      {hasta:100, txt:'Va demasiado rápido: escapa al espacio.', alerta:true}
+    ],
+    explica:{
+      grande:'Un planeta en órbita en realidad <b>va cayendo todo el tiempo</b> hacia el Sol, pero como también avanza de lado, siempre falla el tiro y le da la vuelta. Si va muy lento, la gravedad gana y cae. Si va muy rápido, se escapa. Solo hay un rango de velocidades donde se queda dando vueltas. La Luna hace exactamente esto con la Tierra.',
+      chico:'El Sol <b>jala</b> a los planetas. Si el planeta corre a la velocidad justa, da vueltas para siempre. Si va muy lento se cae, y si va muy rápido se va.'
+    }},
+
+  { id:2, nombre:'Fases de la Luna', icono:'🌙', tono:'#EDE7D6',
+    resumen:'Mueve la Luna en su órbita y mira cómo se ve',
+    control:{etiqueta:'Posición en la órbita', min:0, max:360, inicio:180, unidad:'°'},
+    dibuja:dibujaFases, qG:Q_LUNA_G, qC:Q_LUNA_C,
+    estados:[
+      {hasta:20,  txt:'Luna llena: la vemos completa.', alerta:false},
+      {hasta:80,  txt:'Gibosa menguante: se va achicando.', alerta:false},
+      {hasta:100, txt:'Cuarto menguante: media Luna.', alerta:false},
+      {hasta:170, txt:'Luna menguante: queda poquito.', alerta:false},
+      {hasta:190, txt:'Luna nueva: no la vemos.', alerta:false},
+      {hasta:260, txt:'Luna creciente: empieza a aparecer.', alerta:false},
+      {hasta:280, txt:'Cuarto creciente: media Luna.', alerta:false},
+      {hasta:340, txt:'Gibosa creciente: casi llena.', alerta:false},
+      {hasta:360, txt:'Luna llena: la vemos completa.', alerta:false}
+    ],
+    explica:{
+      grande:'La Luna <b>nunca cambia de forma</b>. El Sol siempre ilumina exactamente la mitad de ella. Lo que cambia es desde qué ángulo la vemos: según dónde esté en su órbita, vemos más o menos de esa mitad iluminada. Ojo con la confusión más común: <b>las fases no son la sombra de la Tierra</b>. Eso es un eclipse, que es otra cosa.',
+      chico:'La Luna <b>no cambia de forma</b>. El Sol siempre le alumbra la mitad. Nosotros a veces vemos toda esa mitad y a veces solo un pedacito.'
+    }},
+
+  { id:3, nombre:'Eclipse', icono:'🌑', tono:'#F0B02E',
+    resumen:'Alinea la Luna entre el Sol y la Tierra',
+    control:{etiqueta:'Alineación de la Luna', min:-100, max:100, inicio:-60, unidad:''},
+    dibuja:dibujaEclipse, qG:Q_ECL_G, qC:Q_ECL_C,
+    estados:[
+      {hasta:-13, txt:'La Luna pasa por arriba: no tapa el Sol.', alerta:false},
+      {hasta:12,  txt:'¡ECLIPSE SOLAR! La sombra toca la Tierra.', alerta:true},
+      {hasta:100, txt:'La Luna pasa por abajo: no tapa el Sol.', alerta:false}
+    ],
+    explica:{
+      grande:'Un eclipse solar pasa cuando la Luna se mete justo entre el Sol y nosotros y su sombra cae en la Tierra. Como la órbita de la Luna está <b>inclinada unos 5 grados</b>, casi siempre pasa un poco arriba o un poco abajo, y por eso no hay eclipse cada luna nueva. Nunca mires un eclipse sin filtro especial: <b>daña los ojos de forma permanente</b>.',
+      chico:'A veces la Luna se pone <b>justo enfrente del Sol</b> y lo tapa. Se hace de noche un ratito. Nunca hay que verlo sin protección porque lastima los ojos.'
+    }},
+
+  { id:4, nombre:'Vida de una estrella', icono:'⭐', tono:'#FFD066',
+    resumen:'La masa decide cómo termina una estrella',
+    control:{etiqueta:'Masa de la estrella', min:1, max:30, inicio:1, unidad:' soles'},
+    dibuja:dibujaEstrella, qG:Q_EST_G, qC:Q_EST_C,
+    estados:[
+      {hasta:8,  txt:'Como el Sol: será gigante roja y luego enana blanca.', alerta:false},
+      {hasta:20, txt:'Estrella masiva: supernova y queda una estrella de neutrones.', alerta:true},
+      {hasta:30, txt:'Estrella gigante: supernova y queda un agujero negro.', alerta:true}
+    ],
+    explica:{
+      grande:'El destino de una estrella lo decide una sola cosa: <b>cuánta masa tiene</b>. Las como el Sol se hinchan hasta ser gigantes rojas y terminan como <b>enanas blancas</b>, del tamaño de la Tierra. Las de más de 8 soles explotan en <b>supernova</b>; si eran muy grandes, lo que queda se aplasta hasta volverse un <b>agujero negro</b>. Y sí: el Sol no va a explotar.',
+      chico:'Las estrellas también <b>nacen y mueren</b>, pero tardan muchísimo. Las chiquitas se apagan despacio. Las muy grandes hacen una <b>explosión enorme</b>.'
+    }},
+
+  { id:5, nombre:'Agujero negro', icono:'🕳️', tono:'#8B6BD9',
+    resumen:'Aumenta la masa y mira cómo se dobla la luz',
+    control:{etiqueta:'Masa del agujero negro', min:1, max:50, inicio:10, unidad:' soles'},
+    dibuja:dibujaAgujero, qG:Q_AGU_G, qC:Q_AGU_C,
+    estados:[
+      {hasta:15, txt:'Horizonte pequeño: casi toda la luz pasa de largo.', alerta:false},
+      {hasta:35, txt:'El horizonte crece y más rayos quedan atrapados.', alerta:false},
+      {hasta:50, txt:'Horizonte enorme: la luz que se acerca ya no vuelve.', alerta:true}
+    ],
+    explica:{
+      grande:'Un agujero negro es materia tan apretada que su gravedad no deja escapar ni la <b>luz</b>. La frontera se llama <b>horizonte de sucesos</b>: lo que la cruza no vuelve, y por eso se ve negro. El anillo brillante es luz que pasa cerquita y se curva. Un mito que vale aclarar: no aspiran todo. Si el Sol se volviera agujero negro con la misma masa, <b>la Tierra seguiría orbitando exactamente igual</b>.',
+      chico:'Un agujero negro <b>jala tan fuerte</b> que ni la luz puede salir. Por eso se ve negro. Pero está muy, muy lejos y no se traga todo.'
+    }},
+
+  { id:6, nombre:'Las estaciones', icono:'🌍', tono:'#4E86D6',
+    resumen:'Inclina el eje de la Tierra y mira qué cambia',
+    control:{etiqueta:'Inclinación del eje', min:0, max:40, inicio:0, unidad:'°'},
+    dibuja:dibujaEstaciones, qG:Q_ESA_G, qC:Q_ESA_C,
+    estados:[
+      {hasta:3,  txt:'Sin inclinación: los dos lados reciben igual. No hay estaciones.', alerta:false},
+      {hasta:15, txt:'Poca inclinación: estaciones muy suaves.', alerta:false},
+      {hasta:28, txt:'Como la Tierra real: veranos e inviernos marcados.', alerta:false},
+      {hasta:40, txt:'Mucha inclinación: estaciones extremas.', alerta:true}
+    ],
+    explica:{
+      grande:'Las estaciones <b>no son por la distancia al Sol</b>: de hecho la Tierra está más cerca del Sol en enero. Pasan porque el eje está inclinado unos <b>23 grados</b>. Medio año el hemisferio norte apunta hacia el Sol y recibe rayos más directos (verano), y medio año apunta al lado contrario (invierno). Por eso cuando aquí es verano, en Argentina es invierno. Pon el eje en 0 y verás que las estaciones desaparecen.',
+      chico:'La Tierra está <b>chueca</b>, un poquito inclinada. Por eso a veces nos toca más sol (verano) y a veces menos (invierno).'
+    }}
+];
+
+function nivelAstro(f, edad){
+  const banco = edad === 'chico' ? f.qC : f.qG;
+  return Object.assign({}, f, {
+    preguntas: Math.min(3, banco.length),
+    gen(){ return deBanco(banco); }
+  });
+}
+
+const BIOMA_COSMOS = {
+  id:'cosmos', nombre:'Observatorio del Cosmos', icono:'🔭',
+  descripcion:'Experimenta con planetas, estrellas y agujeros negros',
+  color:'t-amatista', tono:'#8B6BD9', especial:true,
+  niveles: edad => ASTROS.map(f => nivelAstro(f, edad))
+};
+
+/* ============================ Registro de biomas ============================ */
+const BIOMAS = [BIOMA_MATE, BIOMA_LETRAS, BIOMA_GEO, BIOMA_INGLES, BIOMA_FRANCES,
+                BIOMA_LAB, BIOMA_COSMOS];
+const biomaPorId = id => BIOMAS.find(b => b.id === id);
+
+const BIOMAS_PROXIMOS = [];
+
+const PREMIOS = [
+  {id:'pico_piedra',  icono:'⛏️',nombre:'Pico de piedra',   costo:3,  ranura:'mano'},
+  {id:'casco_oro',    icono:'⛑️',nombre:'Casco de oro',     costo:8,  ranura:'cabeza'},
+  {id:'espada',       icono:'🗡️',nombre:'Espada del saber', costo:14, ranura:'mano'},
+  {id:'capa',         icono:'🧣',nombre:'Capa de explorador',costo:18, ranura:'espalda'},
+  {id:'pico_diamante',icono:'💎',nombre:'Pico de diamante', costo:22, ranura:'mano'},
+  {id:'corona',       icono:'👑',nombre:'Corona de maestro',costo:32, ranura:'cabeza'},
+  {id:'dragon',       icono:'🐉',nombre:'Dragón amigo',     costo:45, ranura:'companero'}
+];
+
+/* ============================ world/Router + Vistas ============================ */
+const app = document.getElementById('app');
+const Juego = { bioma:null, nivel:null, preguntas:[], temas:[], indice:0, aciertos:0, errores:0, bloqueado:false };
+
+function el(tag, clase, texto){
+  const n = document.createElement(tag);
+  if (clase) n.className = clase;
+  if (texto != null) n.textContent = texto;
+  return n;
+}
+
+function pantalla(){
+  if (typeof Simulacion !== 'undefined') Simulacion.detener();
+  const previo = app.firstElementChild;
+  if (previo) previo.remove();
+  const p = el('div','pantalla entra');
+  app.appendChild(p);
+  app.scrollTop = 0;
+  return p;
+}
+
+function escalonar(contenedor, base, paso){
+  [...contenedor.children].forEach((c,i)=>{ c.style.animationDelay = (base + i*paso)+'ms'; });
+}
+
+function barra(titulo, sub, alVolver, extra){
+  const b = el('div','barra');
+  if (alVolver){
+    const btn = el('button','losa icono-btn','◀');
+    btn.setAttribute('aria-label','Volver');
+    btn.onclick = () => { Audio_.toque(); Voz.callar(); alVolver(); };
+    b.appendChild(btn);
+  }
+  const r = el('div','rotulo');
+  r.appendChild(el('b', null, titulo));
+  if (sub) r.appendChild(el('span', null, sub));
+  b.appendChild(r);
+  if (extra) b.appendChild(extra);
+  return b;
+}
+
+function medidorPerfil(){
+  const p = Perfiles.actual();
+  const m = el('div','medidor');
+  m.innerHTML = `<span>⭐ ${p.estrellasTotales}</span><span class="sep">·</span><span>🔥 ${p.racha}</span>`;
+  return m;
+}
+
+function botonVoz(){
+  const b = el('button','losa icono-btn', Voz.estaActiva() ? '🔊' : '🔇');
+  b.setAttribute('aria-label','Activar o silenciar la voz');
+  b.onclick = () => { b.textContent = Voz.alternar() ? '🔊' : '🔇'; Audio_.toque(); };
+  return b;
+}
+
+function pieConVoz(nota){
+  const c = el('div','pie');
+  if (nota) c.appendChild(el('span', null, nota));
+  const ajus = el('button','losa icono-btn','⚙️ Voz');
+  ajus.onclick = () => { Audio_.toque(); vistaVoz(); };
+  c.appendChild(ajus);
+  c.appendChild(botonVoz());
+  return c;
+}
+
+/* ---------- Ajustes de voz ---------- */
+function vistaVoz(){
+  const p = pantalla();
+  const nombre = nombreHablado(Perfiles.actual().id);
+  p.appendChild(barra('Las voces del juego', 'Elige las que suenen mejor en este aparato', vistaMundo));
+
+  let algunaVoz = false;
+
+  CLAVES_IDIOMA.forEach(k=>{
+    const voces = Voz.lista(k);
+    if (!voces.length) return;
+    algunaVoz = true;
+
+    const rotulo = el('div','pie', k === 'es' ? 'Voz principal (español)'
+                                              : `Voz para las palabras en ${IDIOMAS[k].etiqueta.toLowerCase()}`);
+    rotulo.style.marginBottom = '2px';
+    p.appendChild(rotulo);
+
+    const lista = el('div','biomas');
+    const tema = k === 'es' ? 't-pasto' : k === 'en' ? 't-rubi' : 't-cielo';
+    voces.slice(0, k === 'es' ? 6 : 4).forEach(v=>{
+      const esta = Voz.actual(k) && Voz.actual(k).voiceURI === v.voiceURI;
+      const b = el('button','losa bioma ' + (esta ? tema : 't-off'));
+      const moderna = /natural|neural|premium|enhanced|google|siri/i.test(v.name);
+      b.innerHTML = `<span class="emblema">${esta ? '🔊' : '🎙️'}</span>
+        <span class="cuerpo"><b>${v.name}</b>
+        <em>${v.lang}${moderna ? ' · voz moderna' : ''}${esta ? ' · en uso' : ' · tócala para probarla'}</em></span>`;
+      b.onclick = () => {
+        Audio_.toque();
+        Voz.usar(k, v);
+        if (k === 'es') Voz.decir(`Hola ${nombre}, vamos a jugar. ¿Te gusta cómo sueno?`, true);
+        else Voz.decir([{t:'Así voy a decir las palabras:', l:'es'},
+                        {t:IDIOMAS[k].prueba, l:k}], true);
+        vistaVoz();
+      };
+      lista.appendChild(b);
+    });
+    p.appendChild(lista);
+  });
+
+  if (!algunaVoz){
+    const aviso = el('div','losa bioma t-off');
+    aviso.innerHTML = `<span class="emblema">🔇</span><span class="cuerpo">
+      <b>Este aparato no tiene voces instaladas</b>
+      <em>El juego funciona igual, solo sin narración. En Android e iOS puedes
+      instalar voces desde los ajustes del sistema.</em></span>`;
+    p.appendChild(aviso);
+  }
+
+  /* Cómo se leen los nombres: "Elijah" en español sale mal, y escuchar mal
+     tu propio nombre una y otra vez es de lo más molesto que hay. */
+  const tPron = el('div','pie','Cómo se pronuncian sus nombres');
+  tPron.style.marginBottom = '2px';
+  p.appendChild(tPron);
+
+  const cajaPron = el('div','control');
+  const aj = Perfiles.ajustes();
+  if (!aj.pron) aj.pron = {};
+  Object.keys(NINOS).forEach(id=>{
+    const fila = el('div','fila-pron');
+    fila.appendChild(el('span','quien', NINOS[id].nombre));
+    const campo = document.createElement('input');
+    campo.type = 'text'; campo.className = 'campo';
+    campo.value = nombreHablado(id);
+    campo.setAttribute('aria-label', 'Cómo se pronuncia ' + NINOS[id].nombre);
+    campo.onchange = () => {
+      aj.pron[id] = campo.value.trim() || NINOS[id].nombre;
+      Perfiles.persistir();
+      Voz.decir(`Hola ${aj.pron[id]}`, true);
+    };
+    const probar = el('button','losa icono-btn','🔊');
+    probar.setAttribute('aria-label','Probar');
+    probar.onclick = () => { Audio_.toque(); Voz.decir(`Hola ${campo.value.trim()}`, true); };
+    fila.appendChild(campo); fila.appendChild(probar);
+    cajaPron.appendChild(fila);
+  });
+  cajaPron.appendChild(el('div','leyenda','Escríbelo como suena, no como se escribe. Ej: Elijah → Elaya'));
+  p.appendChild(cajaPron);
+
+  const titulo = el('div','pie','Velocidad');
+  titulo.style.marginBottom = '2px';
+  p.appendChild(titulo);
+
+  const ritmos = el('div','opciones tres');
+  [['Lenta',0.78],['Normal',0.95],['Rápida',1.12]].forEach(([n,x])=>{
+    const activo = Math.abs(Voz.ritmoActual() - x) < 0.02;
+    const b = el('button','losa opcion ' + (activo ? 't-oro' : 't-off'));
+    b.style.fontSize = '15px'; b.style.minHeight = '58px';
+    b.textContent = n;
+    b.onclick = () => {
+      Audio_.toque(); Voz.ritmo(x);
+      Voz.decir(`Muy bien, ${nombre}. Así voy a hablar.`, true);
+      vistaVoz();
+    };
+    ritmos.appendChild(b);
+  });
+  p.appendChild(ritmos);
+
+  const diag = el('div','pie');
+  diag.style.flexDirection = 'column'; diag.style.lineHeight = '1.6';
+  diag.appendChild(el('span', null,
+    `Este aparato tiene ${Voz.cuantas()} voces disponibles.`));
+  if (!Voz.cuantas()){
+    diag.appendChild(el('span', null,
+      'Si no escuchas nada en una tablet Android: entra a Ajustes → Accesibilidad → ' +
+      'Texto a voz, instala el motor de Google y descarga la voz en español.'));
+  }
+  diag.appendChild(el('span', null, 'Lo que elijas se guarda para las próximas partidas.'));
+  p.appendChild(diag);
+}
+
+/* ---------- Laboratorio: pantalla de experimento ---------- */
+const Simulacion = (() => {
+  let raf = null;
+  return {
+    correr(lienzo, fen, leer){
+      this.detener();
+      const g = lienzo.getContext('2d');
+      const st = { p:[], onda:0 };
+      const t0 = performance.now();
+      const paso = () => {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const anchoCSS = lienzo.clientWidth || 320;
+        const altoCSS  = Math.round(anchoCSS * 0.62);
+        if (lienzo.width !== Math.round(anchoCSS*dpr)){
+          lienzo.width  = Math.round(anchoCSS*dpr);
+          lienzo.height = Math.round(altoCSS*dpr);
+          lienzo.style.height = altoCSS+'px';
+        }
+        g.setTransform(dpr,0,0,dpr,0,0);
+        const d = leer();
+        fen.dibuja(g, anchoCSS, altoCSS, d.valor, performance.now()-t0, st, d.alterno);
+        raf = requestAnimationFrame(paso);
+      };
+      paso();
+    },
+    detener(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+  };
+})();
+
+function vistaExperimento(bio, fen){
+  const p = pantalla();
+  const perfil = Perfiles.actual();
+  const edad = NINOS[perfil.id].perfilEdad;
+  const est = perfil.biomas[bio.id].estrellas[fen.id] || 0;
+
+  p.appendChild(barra(`${fen.icono} ${fen.nombre}`, fen.resumen,
+                      () => vistaNiveles(bio.id), medidorPerfil()));
+
+  const caja = el('div','lienzo');
+  const lienzo = document.createElement('canvas');
+  caja.appendChild(lienzo);
+  const medida = el('div','medida');
+  const estado = el('div','estado');
+  caja.appendChild(medida); caja.appendChild(estado);
+  p.appendChild(caja);
+
+  const ctrl = el('div','control');
+  ctrl.style.marginTop = '13px';
+  const etiqueta = el('label', null, fen.control.etiqueta);
+  const palanca = document.createElement('input');
+  palanca.type = 'range';
+  palanca.className = 'palanca';
+  palanca.min = fen.control.min; palanca.max = fen.control.max;
+  palanca.value = fen.control.inicio;
+  palanca.setAttribute('aria-label', fen.control.etiqueta);
+  ctrl.appendChild(etiqueta); ctrl.appendChild(palanca);
+  const leyenda = el('div','leyenda');
+  leyenda.innerHTML = `<span>${fen.control.min}${fen.control.unidad}</span>
+                       <span>${fen.control.max}${fen.control.unidad}</span>`;
+  ctrl.appendChild(leyenda);
+
+  let alterno = false;
+  if (fen.alterno){
+    const sw = el('button','losa opcion t-pasto');
+    sw.style.fontSize = '15px'; sw.style.minHeight = '52px'; sw.style.marginTop = '12px';
+    sw.style.width = '100%';
+    sw.textContent = fen.alterno.off;
+    sw.onclick = () => {
+      alterno = !alterno;
+      sw.textContent = alterno ? fen.alterno.on : fen.alterno.off;
+      sw.classList.toggle('t-pasto', !alterno);
+      sw.classList.toggle('t-piedra', alterno);
+      Audio_.toque();
+    };
+    ctrl.appendChild(sw);
+  }
+  p.appendChild(ctrl);
+
+  /* El texto y el sonido reaccionan al cruzar el umbral, no en cada pixel. */
+  let anterior = null;
+  function refrescar(){
+    const v = Number(palanca.value);
+    medida.textContent = `${fen.control.etiqueta}: ${v}${fen.control.unidad}`;
+    const e = fen.estados.find(x => v <= x.hasta) || fen.estados[fen.estados.length-1];
+    estado.textContent = e.txt;
+    estado.classList.toggle('alerta', !!e.alerta);
+    if (anterior !== e.txt){
+      if (e.alerta && anterior !== null){ Audio_.nivel(); fogonazo(); Voz.decir(e.txt); }
+      anterior = e.txt;
+    }
+  }
+  palanca.oninput = refrescar;
+  refrescar();
+
+  const texto = el('div','explica');
+  texto.style.marginTop = '13px';
+  texto.innerHTML = fen.explica[edad === 'chico' ? 'chico' : 'grande'];
+  p.appendChild(texto);
+
+  const acciones = el('div','opciones');
+  acciones.style.marginTop = '13px';
+  const leer = el('button','losa opcion t-diamante');
+  leer.style.fontSize = '15px'; leer.style.minHeight = '58px';
+  leer.textContent = '🔊 Léemelo';
+  leer.onclick = () => { Audio_.toque(); Voz.decir(texto.textContent, true); };
+  const probar = el('button','losa opcion t-oro');
+  probar.style.fontSize = '15px'; probar.style.minHeight = '58px';
+  probar.innerHTML = est ? `Preguntarme ${'★'.repeat(est)}` : 'Ya entendí, pregúntame';
+  probar.onclick = () => { Audio_.toque(); Simulacion.detener(); empezarNivel(bio, fen); };
+  acciones.appendChild(leer); acciones.appendChild(probar);
+  p.appendChild(acciones);
+  p.appendChild(el('div','pie','Mueve la palanca y observa qué cambia.'));
+
+  Simulacion.correr(lienzo, fen, () => ({ valor:Number(palanca.value), alterno }));
+  if (edad === 'chico') setTimeout(()=> Voz.decir(fen.resumen, true), 500);
+}
+
+/* ---------- Portada ---------- */
+function vistaPortada(){
+  const p = pantalla();
+  const marca = el('div','marca');
+  marca.innerHTML = '<h1>CRAFTLANDIA</h1><p>Construye tu mundo aprendiendo</p>';
+  p.appendChild(marca);
+
+  const grid = el('div','jugadores');
+  for (const id in NINOS){
+    const n = NINOS[id];
+    const d = Perfiles.todos()[id];
+    const btn = el('button','losa ficha ' + n.acento);
+    const plat = el('div','plataforma');
+    plat.appendChild(el('div','sombra'));
+    plat.appendChild(dibujarAvatar(n, 6, true, d && d.equipado));
+    btn.appendChild(plat);
+    btn.appendChild(el('div', null, n.nombre));
+    btn.appendChild(el('div','edad', `${n.edad} años`));
+    const t = d ? d.estrellasTotales : 0;
+    btn.appendChild(el('div','sello', t ? `⭐ ${t} estrellas` : 'Primera partida'));
+    btn.onclick = () => {
+      Audio_.despertar(); Audio_.toque();
+      Perfiles.entrar(id);
+      Voz.decir(`¡Hola ${nombreHablado(id)}! Vamos a jugar.`);
+      vistaMundo();
+    };
+    grid.appendChild(btn);
+  }
+  p.appendChild(grid);
+  escalonar(grid, 160, 110);
+  p.appendChild(el('div','pie','Tu avance se guarda solo. Puedes cerrar cuando quieras.'));
+}
+
+/* ---------- Mapa del mundo ---------- */
+function vistaMundo(){
+  const p = pantalla();
+  const perfil = Perfiles.actual();
+  const n = NINOS[perfil.id];
+  const nivelExp = 1 + Math.floor(perfil.xp/150);
+  p.appendChild(barra(`Mundo de ${n.nombre}`, `Explorador nivel ${nivelExp} · ${perfil.xp} XP`,
+                      vistaPortada, medidorPerfil()));
+
+  const lista = el('div','biomas');
+  BIOMAS.forEach((bio, k) => {
+    const niveles = bio.niveles(n.perfilEdad);
+    const hechos = Object.keys(perfil.biomas[bio.id].estrellas).length;
+    const pct = Math.round(hechos/niveles.length*100);
+    const b = el('button','losa bioma ' + bio.color);
+    b.innerHTML = `<span class="emblema">${bio.icono}</span>
+      <span class="cuerpo"><b>${bio.nombre}</b><em>${bio.descripcion}</em>
+      <span class="riel"><i style="width:0%"></i></span></span>`;
+    b.onclick = () => { Audio_.toque(); vistaNiveles(bio.id); };
+    lista.appendChild(b);
+    setTimeout(()=>{ const r = b.querySelector('.riel i'); if (r) r.style.width = pct+'%'; }, 420 + k*140);
+  });
+
+  BIOMAS_PROXIMOS.forEach(x=>{
+    const c = el('div','losa bioma t-off');
+    c.innerHTML = `<span class="emblema">🔒</span>
+      <span class="cuerpo"><b>${x.nombre}</b><em>${x.span}</em></span>
+      <span class="emblema" style="background:transparent;box-shadow:none">${x.icono}</span>`;
+    lista.appendChild(c);
+  });
+
+  const fuentes = fuentesDebiles(perfil, n.perfilEdad);
+  if (fuentes.length){
+    const hoy = new Date().toISOString().slice(0,10);
+    const yaHoy = perfil.retoFecha === hoy;
+    const flojos = fuentes.filter(f=>f.pr < 70).length;
+    const reto = el('button','losa bioma t-rubi');
+    reto.innerHTML = `<span class="emblema">🎯</span>
+      <span class="cuerpo"><b>Reto del día${yaHoy ? ' ✓' : ''}</b>
+      <em>${flojos ? (flojos === 1 ? 'Repasa el tema que más le cuesta'
+                                     : `Repasa los ${flojos} temas que más le cuestan`)
+                   : 'Mezcla de todo lo que ha practicado'}</em></span>`;
+    reto.onclick = () => { Audio_.toque(); iniciarRepaso(); };
+    lista.appendChild(reto);
+  }
+
+  const instalar = bloqueInstalar();
+  if (instalar) lista.appendChild(instalar);
+
+  const panel = el('button','losa bioma t-piedra');
+  panel.innerHTML = `<span class="emblema">📊</span>
+    <span class="cuerpo"><b>Cómo van</b><em>Panel para papás: precisión y puntos flojos</em></span>`;
+  panel.onclick = () => { Audio_.toque(); vistaPanel(); };
+  lista.appendChild(panel);
+
+  const cofre = el('button','losa bioma t-tierra');
+  cofre.innerHTML = `<span class="emblema">🧰</span>
+    <span class="cuerpo"><b>Mi cofre</b><em>Premios que has desbloqueado</em></span>`;
+  cofre.onclick = () => { Audio_.toque(); vistaCofre(); };
+  lista.appendChild(cofre);
+
+  p.appendChild(lista);
+  [...lista.children].forEach((c,i)=>{
+    c.classList.add('entra');
+    c.style.animationDelay = (120 + i*70)+'ms';
+  });
+  p.appendChild(pieConVoz('Voz en español'));
+}
+
+/* ---------- Camino de niveles ---------- */
+function vistaNiveles(biomaId){
+  const bio = biomaPorId(biomaId || (Juego.bioma && Juego.bioma.id) || BIOMAS[0].id);
+  const p = pantalla();
+  const perfil = Perfiles.actual();
+  const n = NINOS[perfil.id];
+  const niveles = bio.niveles(n.perfilEdad);
+  const prog = perfil.biomas[bio.id];
+
+  p.appendChild(barra(bio.nombre,
+    `${Object.keys(prog.estrellas).length} de ${niveles.length} niveles completados`,
+    vistaMundo, medidorPerfil()));
+
+  const camino = el('div','camino');
+  niveles.forEach(nv=>{
+    const abierto = nv.id <= prog.nivelMax;
+    const est = prog.estrellas[nv.id] || 0;
+    const btn = el('button','losa nodo ' + (abierto ? (est ? 't-oro' : bio.color) : 't-off'));
+    const cima = el('div','cima');
+    if (abierto) cima.appendChild(bloqueIso(30, est ? '#F0B02E' : (nv.tono || bio.tono)));
+    else cima.appendChild(el('div','cifra','🔒'));
+    btn.appendChild(cima);
+    btn.appendChild(el('div', null, `${nv.icono} ${nv.nombre}`));
+    const est3 = el('div','astros');
+    est3.innerHTML = [0,1,2].map(i => estrellaSVG(i < est)).join('');
+    btn.appendChild(est3);
+    const pr = Desempeno.precision(prog, nv.id);
+    if (pr !== null){
+      const marca = el('div','aviso' + (pr < 70 ? ' urge' : ''));
+      marca.textContent = pr < 70 ? `practicar · ${pr}%` : `${pr}%`;
+      btn.appendChild(marca);
+    }
+    if (abierto) btn.onclick = () => {
+      Audio_.toque();
+      if (bio.especial) vistaExperimento(bio, nv); else empezarNivel(bio, nv);
+    };
+    else btn.disabled = true;
+    camino.appendChild(btn);
+  });
+  p.appendChild(camino);
+  [...camino.children].forEach((c,i)=>{
+    c.classList.add('entra'); c.style.animationDelay = (90 + i*55)+'ms';
+  });
+  p.appendChild(pieConVoz(null));
+}
+
+/* ---------- Panel para papás ---------- */
+function vistaPanel(){
+  const p = pantalla();
+  const perfil = Perfiles.actual();
+  const n = NINOS[perfil.id];
+  const edad = n.perfilEdad;
+  p.appendChild(barra('Cómo va ' + n.nombre, 'Datos reales de sus partidas', vistaMundo));
+
+  let respondidas = 0, ac = 0, conDatos = 0;
+  const filas = BIOMAS.map(bio=>{
+    const r = resumenBioma(perfil, bio, edad);
+    respondidas += r.respondidas;
+    if (r.precision !== null){ conDatos++; ac += r.precision * r.respondidas; }
+    return { bio, r };
+  });
+  const general = respondidas ? Math.round(ac/respondidas) : null;
+
+  if (!respondidas){
+    const vacio = el('div','losa bioma t-off');
+    vacio.innerHTML = `<span class="emblema">📭</span><span class="cuerpo">
+      <b>Todavía no hay datos</b>
+      <em>En cuanto ${n.nombre} juegue un nivel aparecerá aquí su desempeño:
+      precisión por materia, qué le cuesta y qué ya domina.</em></span>`;
+    p.appendChild(vacio);
+    p.appendChild(el('div','pie','Vuelve después de la primera partida.'));
+    return;
+  }
+
+  const cifras = el('div','opciones tres');
+  [[String(respondidas),'respuestas'], [general+'%','precisión'], ['🔥 '+perfil.racha,'días seguidos']]
+    .forEach(([v,t])=>{
+      const c = el('div','losa opcion t-off');
+      c.style.minHeight = '76px'; c.style.fontSize = '22px'; c.style.cursor = 'default';
+      c.appendChild(el('div', null, v));
+      const sub = el('div', null, t);
+      sub.style.fontSize = '11px'; sub.style.fontWeight = '400'; sub.style.opacity = '.8';
+      c.appendChild(sub);
+      cifras.appendChild(c);
+    });
+  p.appendChild(cifras);
+
+  const tit = el('div','pie','Por materia');
+  tit.style.marginBottom = '2px';
+  p.appendChild(tit);
+
+  const lista = el('div','biomas');
+  filas.forEach(({bio, r})=>{
+    const c = el('div','losa bioma ' + (r.precision === null ? 't-off' : bio.color));
+    c.style.cursor = 'default';
+    let detalle;
+    if (r.precision === null) detalle = 'Todavía sin jugar';
+    else if (r.peor && r.peor.pr < 70) detalle = `Le cuesta: ${r.peor.nv.nombre} (${r.peor.pr}%)`;
+    else detalle = `Va bien en todos los niveles jugados`;
+    c.innerHTML = `<span class="emblema">${bio.icono}</span>
+      <span class="cuerpo"><b>${bio.nombre}</b>
+      <em>${r.jugados} de ${r.total} niveles · ${detalle}</em>
+      <span class="riel"><i style="width:${r.precision||0}%"></i></span></span>
+      <span class="aviso${r.precision !== null && r.precision < 70 ? ' urge' : ''}">${
+        r.precision === null ? '—' : r.precision+'%'}</span>`;
+    lista.appendChild(c);
+  });
+  p.appendChild(lista);
+
+  /* Los enunciados que fallaron, tal cual quedaron guardados. */
+  const temas = [];
+  BIOMAS.forEach(bio=>{
+    const prog = perfil.biomas[bio.id];
+    bio.niveles(edad).forEach(nv=>{
+      const st = prog.stats[nv.id];
+      if (st && st.temas) st.temas.forEach(t=>{
+        if (!temas.some(x=>x.t === t)) temas.push({ t, bio:bio.icono });
+      });
+    });
+  });
+  if (temas.length){
+    const t2 = el('div','pie','Lo que se le ha complicado');
+    t2.style.marginBottom = '2px';
+    p.appendChild(t2);
+    const caja = el('div','explica');
+    caja.innerHTML = temas.slice(-8).reverse()
+      .map(x=>`${x.bio} ${x.t}`).join('<br>');
+    p.appendChild(caja);
+  }
+
+  p.appendChild(el('div','pie','El Reto del día usa justo esta información para repasar.'));
+}
+
+/* ---------- Cofre: probador de premios ---------- */
+function vistaCofre(){
+  const p = pantalla();
+  const perfil = Perfiles.actual();
+  const n = NINOS[perfil.id];
+  const puestos = Object.keys(perfil.equipado).filter(r => perfil.equipado[r]).length;
+  p.appendChild(barra('El cofre de ' + n.nombre,
+    `${perfil.estrellasTotales} estrellas · ${puestos} cosas puestas`,
+    vistaMundo, medidorPerfil()));
+
+  /* Vista previa: el personaje con lo que trae puesto ahora mismo. */
+  const vitrina = el('div','plataforma');
+  vitrina.style.height = '176px';
+  const sombra = el('div','sombra');
+  vitrina.appendChild(sombra);
+  const figura = dibujarAvatar(n, 8, true, perfil.equipado);
+  vitrina.appendChild(figura);
+  p.appendChild(vitrina);
+
+  function repintar(){
+    const nueva = dibujarAvatar(n, 8, true, perfil.equipado);
+    vitrina.replaceChild(nueva, vitrina.lastChild);
+  }
+
+  const g = el('div','cofre');
+  PREMIOS.forEach(pr=>{
+    const abierto = perfil.estrellasTotales >= pr.costo;
+    const puesto = perfil.equipado[pr.ranura] === pr.id;
+    const c = el('button','losa premio ' +
+      (!abierto ? 't-off' : puesto ? 't-oro abierto' : 't-piedra abierto'));
+    c.innerHTML = `<span class="simbolo">${abierto ? pr.icono : '🔒'}</span><b>${pr.nombre}</b>
+      <span>${!abierto ? '⭐ '+pr.costo : puesto ? '✓ puesto' : 'ponérselo'}</span>`;
+    if (abierto){
+      c.onclick = () => {
+        Audio_.toque();
+        /* Tocar lo que ya trae puesto se lo quita. */
+        perfil.equipado[pr.ranura] = puesto ? null : pr.id;
+        Perfiles.persistir();
+        repintar();
+        vistaCofre();
+      };
+    } else c.disabled = true;
+    g.appendChild(c);
+  });
+  p.appendChild(g);
+  [...g.children].forEach((c,i)=>{ c.classList.add('entra'); c.style.animationDelay = (80+i*50)+'ms'; });
+
+  const siguiente = PREMIOS.find(x => perfil.estrellasTotales < x.costo);
+  p.appendChild(el('div','pie', siguiente
+    ? `Te faltan ${siguiente.costo - perfil.estrellasTotales} estrellas para ${siguiente.nombre}.`
+    : 'Ya desbloqueaste todo. Toca cualquiera para ponérselo o quitárselo.'));
+}
+
+/* ---------- Reto del día: repaso adaptativo ---------- */
+function iniciarRepaso(){
+  const perfil = Perfiles.actual();
+  const edad = NINOS[perfil.id].perfilEdad;
+  const fuentes = fuentesDebiles(perfil, edad);
+  if (!fuentes.length) return;
+
+  const nv = {
+    id:'reto', nombre:'Reto del día', icono:'🎯',
+    preguntas: edad === 'chico' ? 5 : 6,
+    gen(){
+      const f = elegirPonderado(fuentes);
+      const q = f.nv.gen();
+      q.__fuente = f;          /* de dónde salió, para devolverle el resultado */
+      return q;
+    }
+  };
+  const bio = {
+    id:'repaso', nombre:'Reto del día', icono:'🎯',
+    color:'t-rubi', tono:'#D14B3C', repaso:true,
+    niveles: () => [nv]
+  };
+  perfil.retoFecha = new Date().toISOString().slice(0,10);
+  Perfiles.persistir();
+  empezarNivel(bio, nv);
+}
+
+/* Salir de un nivel: el reto del día no tiene mapa propio. */
+function volverDelNivel(){
+  const bio = Juego.bioma;
+  if (!bio || bio.repaso) vistaMundo(); else vistaNiveles(bio.id);
+}
+
+/* ---------- Motor de juego ---------- */
+function empezarNivel(bio, nv){
+  Juego.bioma = bio; Juego.nivel = nv;
+  Juego.indice = 0; Juego.aciertos = 0; Juego.errores = 0; Juego.preguntas = []; Juego.temas = [];
+  /* La huella debe mirar el CONTENIDO, no solo el enunciado: hay muchos
+     niveles donde el texto siempre es el mismo ("¿Qué letra falta?") y lo
+     único que cambia son las opciones. Comparando solo el texto, la segunda
+     pregunta parecía repetida y el nivel se acababa en el primer reto. */
+  const huella = q => q.texto + '¦' + q.opciones[q.respuesta].valor +
+                      '¦' + q.opciones.map(o => o.valor).sort().join('·') +
+                      '¦' + (q.visual ? JSON.stringify(q.visual) : '');
+  const vistos = new Set();
+  let vueltas = 0;
+  while (Juego.preguntas.length < nv.preguntas && vueltas < 400){
+    vueltas++;
+    const q = nv.gen();
+    const h = huella(q);
+    if (vistos.has(h)) continue;
+    vistos.add(h);
+    Juego.preguntas.push(q);
+  }
+  /* Si el banco da para menos, mejor repetir que dejar el nivel a medias. */
+  while (Juego.preguntas.length < nv.preguntas) Juego.preguntas.push(nv.gen());
+  Dificultad.reiniciar();
+  pintarPregunta();
+}
+
+function pintarPregunta(){
+  const p = pantalla();
+  const nv = Juego.nivel;
+  const q = Juego.preguntas[Juego.indice];
+  Juego.bloqueado = false;
+
+  const med = el('div','medidor');
+  const j = el('div','jalones');
+  for (let i=0;i<nv.preguntas;i++){
+    const t = el('i');
+    if (i < Juego.indice) t.className = Juego.preguntas[i].fallada ? 'raspon' : 'bien';
+    j.appendChild(t);
+  }
+  med.appendChild(j);
+  /* Adaptatividad real: si lleva dos fallos seguidos se le quita un
+     distractor. La pregunta sigue siendo la misma, pero con menos ruido. */
+  let opciones = q.opciones, respuesta = q.respuesta, conAyuda = false;
+  if (Dificultad.necesitaRepaso() && opciones.length > 3){
+    const correcta = opciones[respuesta];
+    const otras = opciones.filter((_,i) => i !== respuesta);
+    otras.splice(az(0, otras.length-1), 1);
+    opciones = mezclar([correcta, ...otras]);
+    respuesta = opciones.indexOf(correcta);
+    conAyuda = true;
+  }
+  /* Índice de la respuesta tal como se está mostrando ahora mismo. */
+  Juego.respuestaVisible = respuesta;
+
+  p.appendChild(barra(`${nv.icono} ${nv.nombre}`,
+    `Reto ${Juego.indice+1} de ${nv.preguntas}` + (conAyuda ? ' · te dejo menos opciones' : ''),
+    volverDelNivel, med));
+
+  const escena = el('div','escena');
+  const caja = el('div','tablilla');
+  caja.appendChild(el('div','enunciado', q.texto));
+  if (q.visual) caja.appendChild(pintarVisual(q.visual));
+  escena.appendChild(caja);
+
+  const ops = el('div', 'opciones' + (opciones.length === 3 ? ' de3' : ''));
+  opciones.forEach((o,i)=>{
+    const btn = el('button','losa opcion');
+    if (o.color) btn.style.background = o.color;
+    else btn.classList.add(['t-pasto','t-oro','t-diamante','t-amatista'][i%4]);
+    if (o.muestra) btn.appendChild(bloqueIso(38, o.muestra));
+    if (o.bandera) btn.appendChild(pintarBandera(o.bandera, 88));
+    if (o.emoji) btn.appendChild(el('span','emojo', o.emoji));
+    if (o.etiqueta){
+      if (o.chico || o.etiqueta.length > 4) btn.classList.add('texto-chico');
+      btn.appendChild(el('div', null, o.etiqueta));
+    }
+    if (o.puntos > 0){
+      const d = el('div','conteo');
+      for (let k=0;k<o.puntos;k++) d.appendChild(el('i'));
+      btn.appendChild(d);
+    }
+    btn.style.animationDelay = (140 + i*70)+'ms';
+    btn.onclick = () => responder(i, btn, q, respuesta);
+    ops.appendChild(btn);
+  });
+  escena.appendChild(ops);
+  p.appendChild(escena);
+
+  const pie = el('div','pie');
+  const rb = el('button','losa icono-btn','🔊 Repetir');
+  rb.onclick = () => { Audio_.toque(); Voz.decir(q.hablado, true); };
+  pie.appendChild(rb);
+  pie.appendChild(botonVoz());
+  p.appendChild(pie);
+
+  const chico = NINOS[Perfiles.actual().id].perfilEdad === 'chico';
+  setTimeout(()=> Voz.decir(q.hablado, chico), 320);
+}
+
+function pintarBandera(b, ancho){
+  const f = el('div','bandera');
+  f.style.width = ancho+'px';
+  f.style.setProperty('--fw', ancho+'px');
+  f.style.background = b.capas.join(',');
+  f.setAttribute('role','img');
+  f.setAttribute('aria-label','Bandera de ' + b.n);
+  (b.partes || []).forEach(p=>{
+    const x = el('div', p.k);
+    if (p.k === 'disco'){ x.style.background = p.color; x.style.height = p.tam+'%'; }
+    else if (p.k === 'hoja'){ x.textContent = p.texto; }
+    else x.style.background = p.color;
+    f.appendChild(x);
+  });
+  return f;
+}
+
+function fichaLetra(txt, silaba, retraso){
+  const f = el('div','ficha-letra' + (silaba ? ' silaba' : '') + (txt == null ? ' hueco' : ''));
+  f.textContent = txt == null ? '?' : txt;
+  f.style.animationDelay = retraso+'ms';
+  return f;
+}
+
+function pintarVisual(v){
+  const cont = el('div','montaje');
+
+  if (v.tipo === 'emoji'){
+    cont.appendChild(el('span','emojo', v.e));
+    return cont;
+  }
+  if (v.tipo === 'bandera'){
+    cont.appendChild(pintarBandera(v.b, 132));
+    return cont;
+  }
+  if (v.tipo === 'bloque'){
+    cont.appendChild(bloqueIso(62, v.c));
+    return cont;
+  }
+  if (v.tipo === 'letras' || v.tipo === 'silabas'){
+    const ped = el('div','pedestal');
+    if (v.e) ped.appendChild(el('span','emojo', v.e));
+    const tira = el('div','tira');
+    v.partes.forEach((t,i)=> tira.appendChild(fichaLetra(t, v.tipo === 'silabas', 120+i*70)));
+    ped.appendChild(tira);
+    cont.appendChild(ped);
+    return cont;
+  }
+
+  if (v.tipo === 'cubos'){
+    const col = CUBOS[az(0,CUBOS.length-1)];
+    for (let i=0;i<v.cantidad;i++) cont.appendChild(bloqueIso(34, col, i*70));
+  }
+  if (v.tipo === 'suma' || v.tipo === 'resta'){
+    const g = el('div','conjunto');
+    const g1 = el('div','montaje'); g1.style.marginTop = '0';
+    for (let i=0;i<v.a;i++) g1.appendChild(bloqueIso(30, '#5BA83C', i*60));
+    const signo = el('div','operador', v.tipo === 'suma' ? '+' : '−');
+    const g2 = el('div','montaje'); g2.style.marginTop = '0';
+    for (let i=0;i<v.b;i++){
+      const c = bloqueIso(30, v.tipo === 'suma' ? '#F0B02E' : '#6B7285', 300+i*60);
+      if (v.tipo === 'resta') c.classList.add('fantasma');
+      g2.appendChild(c);
+    }
+    g.appendChild(g1); g.appendChild(signo); g.appendChild(g2);
+    cont.appendChild(g);
+  }
+  return cont;
+}
+
+function responder(indice, boton, q, respuesta){
+  if (Juego.bloqueado) return;
+  Juego.bloqueado = true;
+  const nombre = nombreHablado(Perfiles.actual().id);
+
+  if (indice === (respuesta == null ? q.respuesta : respuesta)){
+    Audio_.romper(); Audio_.acierto();
+    fogonazo();
+    boton.classList.add('ok');
+    desmoronar(boton, getComputedStyle(boton).backgroundColor);
+    chispas(boton);
+    Juego.aciertos++;
+    Dificultad.acierto();
+    /* Con nombre a veces, no siempre: repetirlo en cada acierto cansa. */
+    const conNombre = [`¡Muy bien, ${nombre}!`, `¡Eso es, ${nombre}!`,
+                       `¡Vas muy bien, ${nombre}!`, `¡Bravo, ${nombre}!`];
+    const sinNombre = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!'];
+    const banco = Math.random() < 0.45 ? conNombre : sinNombre;
+    Voz.decir(banco[az(0, banco.length-1)]);
+    setTimeout(siguiente, 950);
+  } else {
+    Audio_.fallo();
+    boton.classList.add('mal');
+    const g = el('div','grieta viva');
+    g.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%">
+      <path d="M50 4 L44 30 L58 42 L40 58 L52 74 L46 96 M44 30 L22 26 M58 42 L82 34 M40 58 L16 66 M52 74 L78 82"
+        stroke="rgba(0,0,0,.55)" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg>`;
+    boton.appendChild(g);
+    Juego.errores++;
+    Juego.preguntas[Juego.indice].fallada = true;
+    if (!Juego.temas.includes(q.texto)) Juego.temas.push(q.texto);
+    Dificultad.fallo();
+    Voz.decir(Math.random() < 0.5 ? `Casi, ${nombre}. Prueba otra vez.` : 'Casi. Prueba otra vez.');
+    setTimeout(()=>{
+      boton.classList.add('t-off');
+      Juego.bloqueado = false;
+    }, 640);
+  }
+}
+
+function siguiente(){
+  Dificultad.cerrarPregunta(!!Juego.preguntas[Juego.indice].fallada);
+  Juego.indice++;
+  if (Juego.indice >= Juego.preguntas.length) terminarNivel();
+  else pintarPregunta();
+}
+
+async function terminarNivel(){
+  const perfil = Perfiles.actual();
+  const nv = Juego.nivel, bio = Juego.bioma;
+  const niveles = bio.niveles(NINOS[perfil.id].perfilEdad);
+  const prog = perfil.biomas[bio.id];
+
+  const est = Juego.errores === 0 ? 3 : (Juego.errores <= 2 ? 2 : 1);
+  const previas = prog.estrellas[nv.id] || 0;
+  if (est > previas){ perfil.estrellasTotales += (est - previas); prog.estrellas[nv.id] = est; }
+  const xpGanado = Juego.aciertos*10 + est*15;
+  perfil.xp += xpGanado;
+  const st = Desempeno.registrar(prog, nv.id, Juego.aciertos, Juego.errores, Juego.temas);
+  /* En el reto del día, cada pregunta le suma al nivel de donde salió:
+     practicar aquí también mejora (o empeora) el nivel original. */
+  if (bio.repaso){
+    const porFuente = new Map();
+    Juego.preguntas.forEach(q=>{
+      if (!q.__fuente) return;
+      const k = q.__fuente.bio.id + '|' + q.__fuente.nv.id;
+      const e = porFuente.get(k) || { f:q.__fuente, a:0, e:0, t:[] };
+      if (q.fallada){ e.e++; e.t.push(q.texto); } else e.a++;
+      porFuente.set(k, e);
+    });
+    porFuente.forEach(v=>{
+      Desempeno.registrar(perfil.biomas[v.f.bio.id], v.f.nv.id, v.a, v.e, v.t);
+    });
+  }
+  const precision = Desempeno.precision(prog, nv.id);
+  const flojo = Desempeno.necesitaPractica(prog, nv.id);
+  const dominado = Dificultad.sugiereAvanzar() && Juego.errores === 0;
+  const desbloqueo = nv.id < niveles.length && prog.nivelMax === nv.id;
+  if (desbloqueo) prog.nivelMax = nv.id + 1;
+  await Perfiles.persistir();
+
+  Audio_.nivel();
+  const p = pantalla();
+  p.appendChild(barra(bio.repaso ? 'Reto terminado' : 'Nivel completado',
+                      nv.nombre, volverDelNivel, medidorPerfil()));
+
+  const r = el('div','desenlace');
+  const plat = el('div','plataforma');
+  plat.style.height = '132px'; plat.style.position = 'relative';
+  plat.style.display = 'flex'; plat.style.alignItems = 'flex-end'; plat.style.justifyContent = 'center';
+  plat.appendChild(el('div','sombra'));
+  plat.appendChild(dibujarAvatar(NINOS[perfil.id], 6, true, perfil.equipado));
+  r.appendChild(plat);
+
+  r.appendChild(el('h2', null,
+    est === 3 ? `¡Perfecto, ${NINOS[perfil.id].nombre}!` :
+    est === 2 ? `¡Muy bien, ${NINOS[perfil.id].nombre}!` :
+                `¡Lo lograste, ${NINOS[perfil.id].nombre}!`));
+
+  const tr = el('div','trofeos');
+  tr.innerHTML = [0,1,2].map(i => estrellaSVG(i < est)).join('');
+  [...tr.children].forEach((s,i)=>{ s.style.animationDelay = (260 + i*220)+'ms'; });
+  r.appendChild(tr);
+  for (let i=0;i<est;i++) setTimeout(()=>Audio_.estrella(i), 300 + i*220);
+
+  const nivelExp = 1 + Math.floor(perfil.xp/150);
+  const riel = el('div','xp-riel'); riel.innerHTML = '<i></i>';
+  r.appendChild(riel);
+  setTimeout(()=>{ riel.firstChild.style.width = ((perfil.xp % 150)/150*100)+'%'; }, 700);
+
+  r.appendChild(el('div','sumario',
+    `Aciertos: ${Juego.aciertos} de ${Juego.preguntas.length}  ·  precisión ${precision}%\n` +
+    `+${xpGanado} XP  ·  Explorador nivel ${nivelExp}` +
+    (desbloqueo ? `\n🔓 Se abrió el nivel ${nv.id+1}` : '') +
+    (flojo ? `\n💡 Te recomiendo repetir este nivel antes de seguir`
+           : dominado ? `\n🚀 Ya lo dominas, puedes avanzar` : '')));
+
+  const acciones = el('div','opciones');
+  acciones.style.marginTop = '6px'; acciones.style.width = 'min(400px,88vw)';
+  /* El botón dorado es el que se recomienda: repetir si batalló,
+     avanzar si ya lo domina. */
+  const otra = el('button','losa opcion ' + (flojo ? 't-oro' : 't-pasto'));
+  otra.style.fontSize = '16px'; otra.style.minHeight = '62px';
+  otra.textContent = bio.repaso ? 'Otro reto' : flojo ? 'Practicar otra vez' : 'Jugar otra vez';
+  otra.onclick = () => { Audio_.toque(); if (bio.repaso) iniciarRepaso(); else empezarNivel(bio, nv); };
+  const seguir = el('button','losa opcion ' + (flojo ? 't-off' : 't-oro'));
+  seguir.style.fontSize = '16px'; seguir.style.minHeight = '62px';
+  const proximo = bio.repaso ? null : niveles.find(x => x.id === nv.id+1);
+  if (proximo && proximo.id <= prog.nivelMax){
+    seguir.textContent = bio.especial ? `${proximo.icono} ${proximo.nombre} ▶` : `Nivel ${proximo.id} ▶`;
+    seguir.onclick = () => {
+      Audio_.toque();
+      if (bio.especial) vistaExperimento(bio, proximo); else empezarNivel(bio, proximo);
+    };
+  } else {
+    seguir.textContent = bio.repaso ? 'Volver al mundo' : 'Ver el mapa';
+    seguir.onclick = () => { Audio_.toque(); volverDelNivel(); };
+  }
+  acciones.appendChild(otra); acciones.appendChild(seguir);
+  [...acciones.children].forEach((c,i)=>{ c.style.animationDelay = (900 + i*120)+'ms'; });
+  r.appendChild(acciones);
+  p.appendChild(r);
+
+  const nom = nombreHablado(perfil.id);
+  if (!REDUCIR){
+    setTimeout(()=>chispas(tr), 400);
+    /* Sacar las tres estrellas merece una celebración de verdad. */
+    if (est === 3){
+      [700, 950, 1200].forEach(t => setTimeout(()=>{ chispas(tr); fogonazo(); }, t));
+    }
+  }
+
+  const cierre = est === 3
+    ? [`¡Perfecto, ${nom}! Ganaste las tres estrellas. ¡Eres un maestro!`,
+       `¡Increíble, ${nom}! Tres estrellas. Lo hiciste sin equivocarte.`,
+       `¡Bravo, ${nom}! Tres estrellas para ti. ¡Qué orgullo!`][az(0,2)]
+    : est === 2
+    ? `¡Muy bien, ${nom}! Ganaste dos estrellas.`
+    : `¡Lo lograste, ${nom}! Ganaste una estrella.`;
+  const extra = desbloqueo ? ` Y abriste el nivel ${nv.id+1}, ${nom}.` : '';
+  Voz.decir(cierre + extra);
+}
+
+/* ============================ app/Instalable ============================ */
+/* El manifiesto y los íconos se generan aquí mismo, así el juego sigue
+   siendo un solo archivo. Para funcionar sin internet hace falta además
+   subir sw.js junto al HTML; si no está, todo lo demás funciona igual. */
+const Instalable = (() => {
+  let evento = null, listo = false;
+
+  function dibujarIcono(tam){
+    const c = document.createElement('canvas');
+    c.width = c.height = tam;
+    const g = c.getContext('2d');
+    /* fondo */
+    const f = g.createLinearGradient(0,0,0,tam);
+    f.addColorStop(0,'#1B2B4C'); f.addColorStop(1,'#3E5C86');
+    g.fillStyle = f; g.fillRect(0,0,tam,tam);
+    /* bloque isométrico de pasto, la misma imagen del juego */
+    const cx = tam/2, cy = tam*0.54;
+    const an = tam*0.27, al = tam*0.16, lado = tam*0.24;
+    const cara = (pts, color) => {
+      g.fillStyle = color; g.beginPath();
+      pts.forEach(([x,y],i)=> i ? g.lineTo(x,y) : g.moveTo(x,y));
+      g.closePath(); g.fill();
+    };
+    const topY = cy - lado/2;
+    cara([[cx,topY-al],[cx+an,topY],[cx,topY+al],[cx-an,topY]], '#74C24C');
+    cara([[cx-an,topY],[cx,topY+al],[cx,topY+al+lado],[cx-an,topY+lado]], '#6B4526');
+    cara([[cx+an,topY],[cx,topY+al],[cx,topY+al+lado],[cx+an,topY+lado]], '#8B5A2B');
+    /* borde de pasto en las caras laterales */
+    cara([[cx-an,topY],[cx,topY+al],[cx,topY+al*0.45+tam*0.05],[cx-an,topY+tam*0.05]], '#4E8F33');
+    cara([[cx+an,topY],[cx,topY+al],[cx,topY+al*0.45+tam*0.05],[cx+an,topY+tam*0.05]], '#5BA83C');
+    return c.toDataURL('image/png');
+  }
+
+  function preparar(){
+    if (listo) return;
+    let i192, i512;
+    try{ i192 = dibujarIcono(192); i512 = dibujarIcono(512); }
+    catch(e){ return; }   /* si el canvas falla, el juego sigue igual */
+
+    const manifiesto = {
+      name:'Craftlandia', short_name:'Craftlandia',
+      description:'Aprende matemáticas, letras, geografía, inglés y francés jugando',
+      start_url:'.', scope:'.', display:'standalone', orientation:'any',
+      background_color:'#101B33', theme_color:'#141E33', lang:'es-MX',
+      icons:[
+        {src:i192, sizes:'192x192', type:'image/png', purpose:'any'},
+        {src:i512, sizes:'512x512', type:'image/png', purpose:'any'},
+        {src:i512, sizes:'512x512', type:'image/png', purpose:'maskable'}
+      ]
+    };
+    try{
+      const blob = new Blob([JSON.stringify(manifiesto)], {type:'application/manifest+json'});
+      const enlace = document.createElement('link');
+      enlace.rel = 'manifest';
+      enlace.href = URL.createObjectURL(blob);
+      document.head.appendChild(enlace);
+    }catch(e){}
+    /* iOS no lee el manifiesto: usa su propia etiqueta */
+    try{
+      const apple = document.createElement('link');
+      apple.rel = 'apple-touch-icon';
+      apple.href = dibujarIcono(180);
+      document.head.appendChild(apple);
+    }catch(e){}
+    listo = true;
+  }
+
+  function registrarSW(){
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;   /* en file:// no aplica */
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  return {
+    iniciar(){
+      preparar();
+      registrarSW();
+      window.addEventListener('beforeinstallprompt', e=>{
+        e.preventDefault(); evento = e;
+      });
+    },
+    yaInstalada(){
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             window.navigator.standalone === true;
+    },
+    esIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent || ''); },
+    puede(){ return !!evento; },
+    async instalar(){
+      if (!evento) return false;
+      evento.prompt();
+      try{ await evento.userChoice; }catch(e){}
+      evento = null;
+      return true;
+    }
+  };
+})();
+
+/* Botón o instrucción para dejarlo como app en la pantalla de inicio. */
+function bloqueInstalar(){
+  if (Instalable.yaInstalada()) return null;
+  if (Instalable.puede()){
+    const b = el('button','losa bioma t-diamante');
+    b.innerHTML = `<span class="emblema">📲</span>
+      <span class="cuerpo"><b>Instalar Craftlandia</b>
+      <em>Queda como app, con su ícono y sin barra del navegador</em></span>`;
+    b.onclick = async () => { Audio_.toque(); await Instalable.instalar(); vistaMundo(); };
+    return b;
+  }
+  if (Instalable.esIOS()){
+    const c = el('div','losa bioma t-off');
+    c.style.cursor = 'default';
+    c.innerHTML = `<span class="emblema">📲</span>
+      <span class="cuerpo"><b>Ponlo en la pantalla de inicio</b>
+      <em>Toca Compartir ⬆️ y luego "Agregar a inicio". Queda como app.</em></span>`;
+    return c;
+  }
+  return null;
+}
+
+/* ============================ Arranque ============================ */
+(async function(){
+  Escenografia.montar();
+  Instalable.iniciar();
+  await Perfiles.iniciar();
+  Voz.conectar(Perfiles.ajustes(), Perfiles.persistir);
+  vistaPortada();
+  document.addEventListener('pointerdown', () => { Audio_.despertar(); Voz.desbloquear(); }, { once:true });
+})();
+</script>
+</body>
+</html>
